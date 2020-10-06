@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<info>
+    <id>integration_suitecrm</id>
+    <name>SuiteCRM integration</name>
+    <summary>Integration of SuiteCRM Customer Relationship Management application</summary>
+    <description><![CDATA[SuiteCRM integration provides a dashboard widget displaying your important notifications,
+    a search provider for content and notifications for activity in SuiteCRM.]]></description>
+    <version>0.0.1</version>
+    <licence>agpl</licence>
+    <author>Julien Veyssier</author>
+    <namespace>SuiteCRM</namespace>
+    <documentation>
+        <developer>https://github.com/nextcloud/integration_suitecrm</developer>
+    </documentation>
+    <category>integration</category>
+    <category>dashboard</category>
+    <website>https://github.com/nextcloud/integration_suitecrm</website>
+    <bugs>https://github.com/nextcloud/integration_suitecrm/issues</bugs>
+    <screenshot>https://github.com/nextcloud/integration_suitecrm/raw/master/img/screenshot1.jpg</screenshot>
+    <dependencies>
+        <database min-version="9.4">pgsql</database>
+        <database>sqlite</database>
+        <database min-version="5.5">mysql</database>
+        <nextcloud min-version="20" max-version="21"/>
+    </dependencies>
+    <settings>
+        <admin>OCA\SuiteCRM\Settings\Admin</admin>
+        <admin-section>OCA\SuiteCRM\Settings\AdminSection</admin-section>
+        <personal>OCA\SuiteCRM\Settings\Personal</personal>
+        <personal-section>OCA\SuiteCRM\Settings\PersonalSection</personal-section>
+    </settings>
+</info>

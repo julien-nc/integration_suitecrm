@@ -1,0 +1,7 @@
+.icon-suitecrm {
+    background-image: url(./../img/app-dark.svg);
+}
+
+body.theme--dark .icon-suitecrm {
+    background-image: url(./../img/app.svg);
+}
