@@ -437,7 +437,7 @@ class SuiteCRMAPIService {
 	 */
 	public function requestOAuthAccessToken(string $url, array $params = [], string $method = 'GET'): array {
 		try {
-			$url = $url . '/oauth/token';
+			$url = $url . '/Api/access_token';
 			$options = [
 				'headers' => [
 					'User-Agent'  => 'Nextcloud SuiteCRM integration',

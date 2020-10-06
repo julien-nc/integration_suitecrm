@@ -4,11 +4,6 @@
 			<a class="icon icon-suitecrm" />
 			{{ t('integration_suitecrm', 'SuiteCRM integration') }}
 		</h2>
-		<p v-if="!showOAuth && !connected" class="settings-hint">
-			{{ t('integration_suitecrm', 'To create an access token yourself, go to the "Token Access" section of your SuiteCRM profile page.') }}
-			<br>
-			{{ t('integration_suitecrm', 'Create a "Personal Access Token" and give it "TICKET -> AGENT", "ADMIN -> OBJECT" and "USER_PREFERENCES -> NOTIFICATIONS" permissions.') }}
-		</p>
 		<div id="suitecrm-content">
 			<div class="suitecrm-grid-form">
 				<label for="suitecrm-url">
@@ -21,24 +16,34 @@
 					:disabled="connected === true"
 					:placeholder="t('integration_suitecrm', 'https://my.suitecrm.org')"
 					@input="onInput">
-				<label v-show="!showOAuth"
-					for="suitecrm-token">
-					<a class="icon icon-category-auth" />
-					{{ t('integration_suitecrm', 'Access token') }}
+				<label v-show="!connected && oAuthMatchUrl"
+					for="suitecrm-login">
+					<a class="icon icon-user" />
+					{{ t('integration_suitecrm', 'User name') }}
 				</label>
-				<input v-show="!showOAuth"
-					id="suitecrm-token"
-					v-model="state.token"
+				<input v-show="!connected && oAuthMatchUrl"
+					id="suitecrm-login"
+					v-model="login"
+					type="text"
+					:placeholder="t('integration_suitecrm', 'SuiteCRM login')"
+					@keyup.enter="onConnect">
+				<label v-show="!connected && oAuthMatchUrl"
+					for="suitecrm-password">
+					<a class="icon icon-password" />
+					{{ t('integration_suitecrm', 'Password') }}
+				</label>
+				<input v-show="!connected && oAuthMatchUrl"
+					id="suitecrm-password"
+					v-model="password"
 					type="password"
-					:disabled="connected === true"
-					:placeholder="t('integration_suitecrm', 'SuiteCRM access token')"
-					@input="onInput">
+					:placeholder="t('integration_suitecrm', 'SuiteCRM password')"
+					@keyup.enter="onConnect">
 			</div>
-			<button v-if="showOAuth && !connected"
+			<button v-if="!connected && oAuthMatchUrl"
 				id="suitecrm-oauth"
 				:disabled="loading === true"
 				:class="{ loading }"
-				@click="onOAuthClick">
+				@click="onConnect">
 				<span class="icon icon-external" />
 				{{ t('integration_suitecrm', 'Connect to SuiteCRM') }}
 			</button>
@@ -95,20 +100,21 @@ export default {
 	data() {
 		return {
 			state: loadState('integration_suitecrm', 'user-config'),
-			initialToken: loadState('integration_suitecrm', 'user-config').token,
+			login: '',
+			password: '',
 			loading: false,
 		}
 	},
 
 	computed: {
-		showOAuth() {
-			return this.state.url === this.state.oauth_instance_url
-				&& this.state.client_id
-				&& this.state.client_secret
+		oAuthConfigured() {
+			return this.state.oauth_instance_url && this.state.client_id && this.state.client_secret
+		},
+		oAuthMatchUrl() {
+			return this.oAuthConfigured && this.state.url === this.state.oauth_instance_url
 		},
 		connected() {
-			return this.state.token && this.state.token !== ''
-				&& this.state.url && this.state.url !== ''
+			return this.state.url && this.state.url !== ''
 				&& this.state.user_name && this.state.user_name !== ''
 		},
 	},
@@ -127,62 +133,38 @@ export default {
 
 	methods: {
 		onLogoutClick() {
-			this.state.token = ''
-			this.saveOptions(true)
+			this.state.user_name = ''
+			this.saveOptions({ user_name: '' })
 		},
 		onNotificationChange(e) {
 			this.state.notification_enabled = e.target.checked
-			this.saveOptions(false)
+			this.saveOptions({ notification_enabled: this.state.notification_enabled ? '1' : '0' })
 		},
 		onSearchChange(e) {
 			this.state.search_enabled = e.target.checked
-			this.saveOptions(false)
+			this.saveOptions({ search_enabled: this.state.search_enabled ? '1' : '0' })
 		},
 		onInput() {
 			this.loading = true
-			const that = this
-			delay(function() {
-				that.saveOptions(true)
+			delay(() => {
+				if (this.state.url !== '' && !this.state.url.startsWith('https://')) {
+					if (this.state.url.startsWith('http://')) {
+						this.state.url = this.state.url.replace('http://', 'https://')
+					} else {
+						this.state.url = 'https://' + this.state.url
+					}
+				}
+				this.saveOptions({ url: this.state.url })
 			}, 2000)()
 		},
-		saveOptions(justTokenAndUrl) {
-			if (this.state.url !== '' && !this.state.url.startsWith('https://')) {
-				if (this.state.url.startsWith('http://')) {
-					this.state.url = this.state.url.replace('http://', 'https://')
-				} else {
-					this.state.url = 'https://' + this.state.url
-				}
-			}
+		saveOptions(values) {
 			const req = {
-				values: {
-				},
-			}
-			if (justTokenAndUrl) {
-				req.values = {
-					token: this.state.token,
-					url: this.state.url,
-				}
-				if (this.showOAuth) {
-					req.values.token_type = 'oauth'
-				} else {
-					req.values.token_type = 'access'
-				}
-			} else {
-				req.values = {
-					search_enabled: this.state.search_enabled ? '1' : '0',
-					notification_enabled: this.state.notification_enabled ? '1' : '0',
-				}
+				values,
 			}
 			const url = generateUrl('/apps/integration_suitecrm/config')
 			axios.put(url, req)
 				.then((response) => {
 					showSuccess(t('integration_suitecrm', 'SuiteCRM options saved'))
-					if (response.data.user_name !== undefined) {
-						this.state.user_name = response.data.user_name
-						if (this.state.token && response.data.user_name === '') {
-							showError(t('integration_suitecrm', 'Incorrect access token'))
-						}
-					}
 				})
 				.catch((error) => {
 					console.debug(error)
@@ -195,28 +177,21 @@ export default {
 					this.loading = false
 				})
 		},
-		onOAuthClick() {
-			const redirectEndpoint = generateUrl('/apps/integration_suitecrm/oauth-redirect')
-			const redirectUri = window.location.protocol + '//' + window.location.host + redirectEndpoint
-			const oauthState = Math.random().toString(36).substring(3)
-			const requestUrl = this.state.url + '/oauth/authorize?client_id=' + encodeURIComponent(this.state.client_id)
-				+ '&redirect_uri=' + encodeURIComponent(redirectUri)
-				+ '&response_type=code'
-				+ '&state=' + encodeURIComponent(oauthState)
-
+		onConnect() {
+			const url = generateUrl('/apps/integration_suitecrm/oauth-connect')
 			const req = {
-				values: {
-					oauth_state: oauthState,
+				params: {
+					login: this.login,
+					password: this.password,
 				},
 			}
-			const url = generateUrl('/apps/integration_suitecrm/config')
-			axios.put(url, req)
+			axios.get(url, req)
 				.then((response) => {
-					window.location.replace(requestUrl)
+					this.state.user_name = response.data.user_name
 				})
 				.catch((error) => {
 					showError(
-						t('integration_suitecrm', 'Failed to save SuiteCRM OAuth state')
+						t('integration_suitecrm', 'Failed')
 						+ ': ' + error.response.request.responseText
 					)
 				})

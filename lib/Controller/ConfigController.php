@@ -82,25 +82,18 @@ class ConfigController extends Controller {
 		}
 		$result = [];
 
-		if (isset($values['token'])) {
-			if ($values['token'] && $values['token'] !== '') {
-				$result = $this->storeUserInfo($values['token']);
-			} else {
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', '');
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'last_open_check', '');
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'token_type', '');
-				$result = [
-					'user_name' => '',
-				];
-			}
+		if (isset($values['user_name']) && $values['user_name'] === '') {
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', '');
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'token', '');
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'last_open_check', '');
+			$result = [
+				'user_name' => '',
+			];
 		}
-		if (isset($result['error'])) {
-			return new DataResponse($result, 401);
-		} else {
-			return new DataResponse($result);
-		}
+
+		return new DataResponse($result);
 	}
 
 	/**
@@ -115,6 +108,35 @@ class ConfigController extends Controller {
 		}
 		$response = new DataResponse(1);
 		return $response;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 *
+	 * @return DataResponse
+	 */
+	public function oauthConnect(string $login = '', string $password = ''): DataResponse {
+		$suitecrmUrl = $this->config->getUserValue($this->userId, Application::APP_ID, 'url', '');
+		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
+		$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
+
+		$result = $this->suitecrmAPIService->requestOAuthAccessToken($suitecrmUrl, [
+			'client_id' => $clientID,
+			'client_secret' => $clientSecret,
+			'username' => $login,
+			'password' => $password,
+			'grant_type' => 'password'
+		], 'POST');
+		if (isset($result['access_token'], $result['refresh_token'])) {
+			$accessToken = $result['access_token'];
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'token', $accessToken);
+			$refreshToken = $result['refresh_token'];
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', $refreshToken);
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', 'plop');
+			return new DataResponse(['user_name' => 'plop']);
+		} else {
+			return new DataResponse($result, 401);
+		}
 	}
 
 	/**
