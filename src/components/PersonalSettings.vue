@@ -178,6 +178,7 @@ export default {
 				})
 		},
 		onConnect() {
+			this.loading = true
 			const url = generateUrl('/apps/integration_suitecrm/oauth-connect')
 			const req = {
 				params: {
@@ -196,6 +197,7 @@ export default {
 					)
 				})
 				.then(() => {
+					this.loading = false
 				})
 		},
 	},

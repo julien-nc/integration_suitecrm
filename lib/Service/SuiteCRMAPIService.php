@@ -132,7 +132,6 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $authType
 	 * @param string $refreshToken
 	 * @param string $clientID
 	 * @param string $clientSecret
@@ -141,14 +140,14 @@ class SuiteCRMAPIService {
 	 * @param ?int $limit
 	 * @return array
 	 */
-	public function getNotifications(string $url, string $accessToken, string $authType,
+	public function getNotifications(string $url, string $accessToken,
 									string $refreshToken, string $clientID, string $clientSecret, string $userId,
 									?string $since = null, ?int $limit = null): array {
 		$params = [
 			'state' => 'pending',
 		];
 		$result = $this->request(
-			$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'online_notifications', $params
+			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'online_notifications', $params
 		);
 		if (isset($result['error'])) {
 			return $result;
@@ -174,7 +173,7 @@ class SuiteCRMAPIService {
 		// get details
 		foreach ($result as $k => $v) {
 			$details = $this->request(
-				$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/' . $v['o_id']
+				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/' . $v['o_id']
 			);
 			if (!isset($details['error'])) {
 				$result[$k]['title'] = $details['title'];
@@ -194,7 +193,7 @@ class SuiteCRMAPIService {
 		$userDetails = [];
 		foreach ($userIds as $uid) {
 			$user = $this->request(
-				$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
+				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
 			);
 			$userDetails[$uid] = [
 				'firstname' => $user['firstname'],
@@ -217,7 +216,6 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $authType
 	 * @param string $refreshToken
 	 * @param string $clientID
 	 * @param string $clientSecret
@@ -225,7 +223,7 @@ class SuiteCRMAPIService {
 	 * @param string $query
 	 * @return array
 	 */
-	public function search(string $url, string $accessToken, string $authType,
+	public function search(string $url, string $accessToken,
 							string $refreshToken, string $clientID, string $clientSecret, string $userId,
 							string $query): array {
 		$params = [
@@ -233,7 +231,7 @@ class SuiteCRMAPIService {
 			'limit' => 20,
 		];
 		$searchResult = $this->request(
-			$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/search', $params
+			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/search', $params
 		);
 
 		$result = [];
@@ -244,7 +242,7 @@ class SuiteCRMAPIService {
 		}
 		// get ticket state names
 		$states = $this->request(
-			$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_states'
+			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_states'
 		);
 		$statesById = [];
 		if (!isset($states['error'])) {
@@ -263,7 +261,7 @@ class SuiteCRMAPIService {
 		}
 		// get ticket priority names
 		$prios = $this->request(
-			$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_priorities'
+			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_priorities'
 		);
 		$priosById = [];
 		if (!isset($prios['error'])) {
@@ -291,7 +289,7 @@ class SuiteCRMAPIService {
 		$userDetails = [];
 		foreach ($userIds as $uid) {
 			$user = $this->request(
-				$url, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
+				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
 			);
 			if (!isset($user['error'])) {
 				$userDetails[$uid] = [
@@ -319,7 +317,6 @@ class SuiteCRMAPIService {
 	 *
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $authType
 	 * @param string $refreshToken
 	 * @param string $clientID
 	 * @param string $clientSecret
@@ -327,13 +324,12 @@ class SuiteCRMAPIService {
 	 * @return string
 	 */
 	public function getSuiteCRMAvatar(string $url,
-									string $accessToken, string $authType, string $refreshToken, string $clientID, string $clientSecret,
+									string $accessToken, string $refreshToken, string $clientID, string $clientSecret,
 									string $image): string {
 		$url = $url . '/api/v1/users/image/' . $image;
-		$authHeader = ($authType === 'access') ? 'Token token=' : 'Bearer ';
 		$options = [
 			'headers' => [
-				'Authorization'  => $authHeader . $accessToken,
+				'Authorization'  => 'Bearer ' . $accessToken,
 				'User-Agent' => 'Nextcloud SuiteCRM integration',
 			]
 		];
@@ -343,7 +339,6 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $suitecrmUrl
 	 * @param string $accessToken
-	 * @param string $authType
 	 * @param string $refreshToken
 	 * @param string $clientID
 	 * @param string $clientSecret
@@ -352,15 +347,14 @@ class SuiteCRMAPIService {
 	 * @param string $method
 	 * @return array
 	 */
-	public function request(string $suitecrmUrl, string $accessToken, string $authType, string $refreshToken,
+	public function request(string $suitecrmUrl, string $accessToken, string $refreshToken,
 							string $clientID, string $clientSecret, string $userId,
 							string $endPoint, array $params = [], string $method = 'GET'): array {
 		try {
-			$url = $suitecrmUrl . '/api/v1/' . $endPoint;
-			$authHeader = ($authType === 'access') ? 'Token token=' : 'Bearer ';
+			$url = $suitecrmUrl . '/Api/index.php/V8/module/' . $endPoint;
 			$options = [
 				'headers' => [
-					'Authorization'  => $authHeader . $accessToken,
+					'Authorization'  => 'Bearer ' . $accessToken,
 					'User-Agent' => 'Nextcloud SuiteCRM integration',
 				]
 			];
@@ -406,24 +400,21 @@ class SuiteCRMAPIService {
 			$response = $e->getResponse();
 			$body = (string) $response->getBody();
 			// refresh token if it's invalid and we are using oauth
-			// response can be : 'OAuth2 token is expired!', 'Invalid token!' or 'Not authorized'
-			if ($authType === 'oauth' && strpos($body, 'OAuth2 token is expired') !== false) {
-				$this->logger->warning('Trying to REFRESH the access token', array('app' => $this->appName));
-				// try to refresh the token
-				$result = $this->requestOAuthAccessToken($suitecrmUrl, [
-					'client_id' => $clientID,
-					'client_secret' => $clientSecret,
-					'grant_type' => 'refresh_token',
-					'refresh_token' => $refreshToken,
-				], 'POST');
-				if (isset($result['access_token'])) {
-					$accessToken = $result['access_token'];
-					$this->config->setUserValue($userId, Application::APP_ID, 'token', $accessToken);
-					// retry the request with new access token
-					return $this->request(
-						$suitecrmUrl, $accessToken, $authType, $refreshToken, $clientID, $clientSecret, $userId, $endPoint, $params, $method
-					);
-				}
+			$this->logger->warning('Trying to REFRESH the access token', array('app' => $this->appName));
+			// try to refresh the token
+			$result = $this->requestOAuthAccessToken($suitecrmUrl, [
+				'client_id' => $clientID,
+				'client_secret' => $clientSecret,
+				'grant_type' => 'refresh_token',
+				'refresh_token' => $refreshToken,
+			], 'POST');
+			if (isset($result['access_token'])) {
+				$accessToken = $result['access_token'];
+				$this->config->setUserValue($userId, Application::APP_ID, 'token', $accessToken);
+				// retry the request with new access token
+				return $this->request(
+					$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $endPoint, $params, $method
+				);
 			}
 			return ['error' => $e->getMessage()];
 		}

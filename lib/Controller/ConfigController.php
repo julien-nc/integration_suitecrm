@@ -132,84 +132,25 @@ class ConfigController extends Controller {
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'token', $accessToken);
 			$refreshToken = $result['refresh_token'];
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', $refreshToken);
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', 'plop');
-			return new DataResponse(['user_name' => 'plop']);
+
+			$info = $this->suitecrmAPIService->request($suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'Users');
+			$userName = $login;
+			$userId = '';
+			if (isset($info['data'])) {
+				foreach ($info['data'] as $user) {
+					if (isset($user['attributes'], $user['attributes']['user_name'], $user['attributes']['full_name'])
+						&& $user['attributes']['user_name'] === $login) {
+						$userName = $user['attributes']['full_name'];
+						$userId = $user['id'];
+						break;
+					}
+				}
+			}
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', $userName);
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', $userId);
+			return new DataResponse(['user_name' => $userName]);
 		} else {
 			return new DataResponse($result, 401);
-		}
-	}
-
-	/**
-	 * receive oauth code and get oauth access token
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param string $code
-	 * @param string $state
-	 * @return RedirectResponse
-	 */
-	public function oauthRedirect(string $code = '', string $state = ''): RedirectResponse {
-		$configState = $this->config->getUserValue($this->userId, Application::APP_ID, 'oauth_state', '');
-		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-		$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-
-		// anyway, reset state
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'oauth_state', '');
-
-		if ($clientID && $clientSecret && $configState !== '' && $configState === $state) {
-			$redirect_uri = $this->urlGenerator->linkToRouteAbsolute('integration_suitecrm.config.oauthRedirect');
-			$suitecrmUrl = $this->config->getUserValue($this->userId, Application::APP_ID, 'url', '');
-			$result = $this->suitecrmAPIService->requestOAuthAccessToken($suitecrmUrl, [
-				'client_id' => $clientID,
-				'client_secret' => $clientSecret,
-				'code' => $code,
-				'redirect_uri' => $redirect_uri,
-				'grant_type' => 'authorization_code'
-			], 'POST');
-			if (isset($result['access_token'])) {
-				$accessToken = $result['access_token'];
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'token', $accessToken);
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'token_type', 'oauth');
-				$refreshToken = $result['refresh_token'];
-				$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', $refreshToken);
-				// get user info
-				$this->storeUserInfo($accessToken);
-				return new RedirectResponse(
-					$this->urlGenerator->linkToRoute('settings.PersonalSettings.index', ['section' => 'connected-accounts']) .
-					'?suitecrmToken=success'
-				);
-			}
-			$result = $this->l->t('Error getting OAuth access token.') . ' ' . $result['error'];
-		} else {
-			$result = $this->l->t('Error during OAuth exchanges');
-		}
-		return new RedirectResponse(
-			$this->urlGenerator->linkToRoute('settings.PersonalSettings.index', ['section' => 'connected-accounts']) .
-			'?suitecrmToken=error&message=' . urlencode($result)
-		);
-	}
-
-	/**
-	 * @param string $accessToken
-	 * @return array
-	 */
-	private function storeUserInfo(string $accessToken): array {
-		$tokenType = $this->config->getUserValue($this->userId, Application::APP_ID, 'token_type', '');
-		$refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
-		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-		$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-		$suitecrmUrl = $this->config->getUserValue($this->userId, Application::APP_ID, 'url', '');
-
-		$info = $this->suitecrmAPIService->request($suitecrmUrl, $accessToken, $tokenType, $refreshToken, $clientID, $clientSecret, $this->userId, 'users/me');
-		if (isset($info['lastname'], $info['firstname'], $info['id'])) {
-			$fullName = $info['firstname'] . ' ' . $info['lastname'];
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', $info['id']);
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', $fullName);
-			return ['user_name' => $fullName];
-		} else {
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', '');
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
-			return $info;
 		}
 	}
 }
