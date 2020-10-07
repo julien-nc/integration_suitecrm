@@ -110,7 +110,7 @@ class SuiteCRMSearchProvider implements IProvider {
 			? $this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
 			: $this->urlGenerator->imagePath(Application::APP_ID, 'app-dark.svg');
 
-		$suitecrmUrl = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'url', '');
+		$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 		$accessToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'token', '');
 		$refreshToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'refresh_token', '');
 		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');

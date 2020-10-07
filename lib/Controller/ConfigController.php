@@ -116,7 +116,7 @@ class ConfigController extends Controller {
 	 * @return DataResponse
 	 */
 	public function oauthConnect(string $login = '', string $password = ''): DataResponse {
-		$suitecrmUrl = $this->config->getUserValue($this->userId, Application::APP_ID, 'url', '');
+		$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 		$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
 
@@ -133,7 +133,10 @@ class ConfigController extends Controller {
 			$refreshToken = $result['refresh_token'];
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', $refreshToken);
 
-			$info = $this->suitecrmAPIService->request($suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'Users');
+			$filter = urlencode('filter[user_name][eq]') . '=' . urlencode($login);
+			$info = $this->suitecrmAPIService->request(
+				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'Users?' . $filter
+			);
 			$userName = $login;
 			$userId = '';
 			if (isset($info['data'])) {
@@ -150,7 +153,7 @@ class ConfigController extends Controller {
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', $userId);
 			return new DataResponse(['user_name' => $userName]);
 		} else {
-			return new DataResponse($result, 401);
+			return new DataResponse(['error' => 'Invalid login/password'], 401);
 		}
 	}
 }

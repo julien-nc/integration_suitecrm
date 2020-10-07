@@ -63,7 +63,7 @@ class SuiteCRMAPIController extends Controller {
 		$this->refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
 		$this->clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 		$this->clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-		$this->suitecrmUrl = $this->config->getUserValue($this->userId, Application::APP_ID, 'url', '');
+		$this->suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 	}
 
 	/**

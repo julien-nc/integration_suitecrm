@@ -1,9 +1,12 @@
 <template>
-	<div id="suitecrm_prefs" class="section">
+	<div v-if="oAuthConfigured" id="suitecrm_prefs" class="section">
 		<h2>
 			<a class="icon icon-suitecrm" />
 			{{ t('integration_suitecrm', 'SuiteCRM integration') }}
 		</h2>
+		<p v-if="!connected" class="settings-hint">
+			{{ t('integration_suitecrm', 'Your login and password are not stored. They are just used once to get an access token which will be used to interact with your account.') }}
+		</p>
 		<div id="suitecrm-content">
 			<div class="suitecrm-grid-form">
 				<label for="suitecrm-url">
@@ -11,35 +14,34 @@
 					{{ t('integration_suitecrm', 'SuiteCRM instance address') }}
 				</label>
 				<input id="suitecrm-url"
-					v-model="state.url"
+					v-model="state.oauth_instance_url"
 					type="text"
-					:disabled="connected === true"
-					:placeholder="t('integration_suitecrm', 'https://my.suitecrm.org')"
-					@input="onInput">
-				<label v-show="!connected && oAuthMatchUrl"
+					:disabled="true"
+					:placeholder="t('integration_suitecrm', 'https://my.suitecrm.org')">
+				<label v-show="!connected"
 					for="suitecrm-login">
 					<a class="icon icon-user" />
 					{{ t('integration_suitecrm', 'User name') }}
 				</label>
-				<input v-show="!connected && oAuthMatchUrl"
+				<input v-show="!connected"
 					id="suitecrm-login"
 					v-model="login"
 					type="text"
 					:placeholder="t('integration_suitecrm', 'SuiteCRM login')"
 					@keyup.enter="onConnect">
-				<label v-show="!connected && oAuthMatchUrl"
+				<label v-show="!connected"
 					for="suitecrm-password">
 					<a class="icon icon-password" />
 					{{ t('integration_suitecrm', 'Password') }}
 				</label>
-				<input v-show="!connected && oAuthMatchUrl"
+				<input v-show="!connected"
 					id="suitecrm-password"
 					v-model="password"
 					type="password"
 					:placeholder="t('integration_suitecrm', 'SuiteCRM password')"
 					@keyup.enter="onConnect">
 			</div>
-			<button v-if="!connected && oAuthMatchUrl"
+			<button v-if="!connected"
 				id="suitecrm-oauth"
 				:disabled="loading === true"
 				:class="{ loading }"
@@ -110,12 +112,8 @@ export default {
 		oAuthConfigured() {
 			return this.state.oauth_instance_url && this.state.client_id && this.state.client_secret
 		},
-		oAuthMatchUrl() {
-			return this.oAuthConfigured && this.state.url === this.state.oauth_instance_url
-		},
 		connected() {
-			return this.state.url && this.state.url !== ''
-				&& this.state.user_name && this.state.user_name !== ''
+			return this.oAuthConfigured && this.state.user_name && this.state.user_name !== ''
 		},
 	},
 
@@ -143,19 +141,6 @@ export default {
 		onSearchChange(e) {
 			this.state.search_enabled = e.target.checked
 			this.saveOptions({ search_enabled: this.state.search_enabled ? '1' : '0' })
-		},
-		onInput() {
-			this.loading = true
-			delay(() => {
-				if (this.state.url !== '' && !this.state.url.startsWith('https://')) {
-					if (this.state.url.startsWith('http://')) {
-						this.state.url = this.state.url.replace('http://', 'https://')
-					} else {
-						this.state.url = 'https://' + this.state.url
-					}
-				}
-				this.saveOptions({ url: this.state.url })
-			}, 2000)()
 		},
 		saveOptions(values) {
 			const req = {
@@ -191,10 +176,20 @@ export default {
 					this.state.user_name = response.data.user_name
 				})
 				.catch((error) => {
-					showError(
-						t('integration_suitecrm', 'Failed')
-						+ ': ' + error.response.request.responseText
-					)
+					console.debug(error)
+					if (error.response) {
+						if (error.response.data && error.response.data.error) {
+							showError(
+								t('integration_suitecrm', 'Failed')
+								+ ': ' + error.response.data.error
+							)
+						} else if (error.response.request && error.response.request.responseText) {
+							showError(
+								t('integration_suitecrm', 'Failed')
+								+ ': ' + error.response.request.responseText
+							)
+						}
+					}
 				})
 				.then(() => {
 					this.loading = false

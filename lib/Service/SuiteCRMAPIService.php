@@ -69,7 +69,7 @@ class SuiteCRMAPIService {
 			$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token', '');
 			$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 			$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-			$suitecrmUrl = $this->config->getUserValue($userId, Application::APP_ID, 'url', '');
+			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 			if ($clientID && $clientSecret && $suitecrmUrl) {
 				$lastNotificationCheck = $this->config->getUserValue($userId, Application::APP_ID, 'last_open_check', '');
 				$lastNotificationCheck = $lastNotificationCheck === '' ? null : $lastNotificationCheck;
