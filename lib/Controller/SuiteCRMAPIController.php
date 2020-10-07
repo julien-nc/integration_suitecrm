@@ -25,7 +25,7 @@ use OCP\AppFramework\Http\RedirectResponse;
 
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 
-use OCP\ILogger;
+use Psr\Log\LoggerInterface;
 use OCP\IRequest;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Controller;
@@ -48,7 +48,7 @@ class SuiteCRMAPIController extends Controller {
 								IL10N $l10n,
 								IAppManager $appManager,
 								IAppData $appData,
-								ILogger $logger,
+								LoggerInterface $logger,
 								SuiteCRMAPIService $suitecrmAPIService,
 								$userId) {
 		parent::__construct($AppName, $request);
