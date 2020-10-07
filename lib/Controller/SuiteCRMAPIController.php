@@ -60,7 +60,6 @@ class SuiteCRMAPIController extends Controller {
 		$this->logger = $logger;
 		$this->suitecrmAPIService = $suitecrmAPIService;
 		$this->accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token', '');
-		$this->tokenType = $this->config->getUserValue($this->userId, Application::APP_ID, 'token_type', '');
 		$this->refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
 		$this->clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 		$this->clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
@@ -88,7 +87,7 @@ class SuiteCRMAPIController extends Controller {
 	public function getSuiteCRMAvatar(string $image = ''): DataDisplayResponse {
 		$response = new DataDisplayResponse(
 			$this->suitecrmAPIService->getSuiteCRMAvatar(
-				$this->suitecrmUrl, $this->accessToken, $this->tokenType, $this->refreshToken, $this->clientID, $this->clientSecret, $image
+				$this->suitecrmUrl, $this->accessToken, $this->refreshToken, $this->clientID, $this->clientSecret, $image
 			)
 		);
 		$response->cacheFor(60*60*24);
@@ -107,7 +106,7 @@ class SuiteCRMAPIController extends Controller {
 			return new DataResponse('', 400);
 		}
 		$result = $this->suitecrmAPIService->getNotifications(
-			$this->suitecrmUrl, $this->accessToken, $this->tokenType, $this->refreshToken, $this->clientID, $this->clientSecret, $this->userId, $since, 7
+			$this->suitecrmUrl, $this->accessToken, $this->refreshToken, $this->clientID, $this->clientSecret, $this->userId, $since, 7
 		);
 		if (!isset($result['error'])) {
 			$response = new DataResponse($result);

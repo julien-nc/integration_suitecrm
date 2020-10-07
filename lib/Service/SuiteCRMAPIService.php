@@ -66,7 +66,6 @@ class SuiteCRMAPIService {
 	private function checkOpenTicketsForUser(string $userId): void {
 		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, 'token', '');
 		if ($accessToken) {
-			$tokenType = $this->config->getUserValue($userId, Application::APP_ID, 'token_type', '');
 			$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token', '');
 			$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 			$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
@@ -76,13 +75,13 @@ class SuiteCRMAPIService {
 				$lastNotificationCheck = $lastNotificationCheck === '' ? null : $lastNotificationCheck;
 				// get the suitecrm user ID
 				$me = $this->request(
-					$suitecrmUrl, $accessToken, $tokenType, $refreshToken, $clientID, $clientSecret, $userId, 'users/me'
+					$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/me'
 				);
 				if (isset($me['id'])) {
 					$my_user_id = $me['id'];
 
 					$notifications = $this->getNotifications(
-						$suitecrmUrl, $accessToken, $tokenType, $refreshToken, $clientID, $clientSecret, $userId, $lastNotificationCheck
+						$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $lastNotificationCheck
 					);
 					if (!isset($notifications['error']) && count($notifications) > 0) {
 						$lastNotificationCheck = $notifications[0]['updated_at'];
@@ -400,21 +399,25 @@ class SuiteCRMAPIService {
 			$response = $e->getResponse();
 			$body = (string) $response->getBody();
 			// refresh token if it's invalid and we are using oauth
-			$this->logger->warning('Trying to REFRESH the access token', array('app' => $this->appName));
-			// try to refresh the token
-			$result = $this->requestOAuthAccessToken($suitecrmUrl, [
-				'client_id' => $clientID,
-				'client_secret' => $clientSecret,
-				'grant_type' => 'refresh_token',
-				'refresh_token' => $refreshToken,
-			], 'POST');
-			if (isset($result['access_token'])) {
-				$accessToken = $result['access_token'];
-				$this->config->setUserValue($userId, Application::APP_ID, 'token', $accessToken);
-				// retry the request with new access token
-				return $this->request(
-					$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $endPoint, $params, $method
-				);
+			if ($response->getStatusCode() === 401 && strpos($body, 'access_denied') !== false) {
+				$this->logger->warning('Trying to REFRESH the access token', array('app' => $this->appName));
+				// try to refresh the token
+				$result = $this->requestOAuthAccessToken($suitecrmUrl, [
+					'client_id' => $clientID,
+					'client_secret' => $clientSecret,
+					'grant_type' => 'refresh_token',
+					'refresh_token' => $refreshToken,
+				], 'POST');
+				if (isset($result['access_token'], $result['refresh_token'])) {
+					$accessToken = $result['access_token'];
+					$this->config->setUserValue($userId, Application::APP_ID, 'token', $accessToken);
+					$refreshToken = $result['refresh_token'];
+					$this->config->setUserValue($userId, Application::APP_ID, 'refresh_token', $refreshToken);
+					// retry the request with new access token
+					return $this->request(
+						$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $endPoint, $params, $method
+					);
+				}
 			}
 			return ['error' => $e->getMessage()];
 		}
