@@ -101,6 +101,15 @@ class ConfigController extends Controller {
 			];
 		}
 
+		//	$accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token', '');
+		//	$refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
+		//	$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
+		//	$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
+		//	$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
+		//	$info = $this->suitecrmAPIService->request(
+		//		$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'module/Users'
+		//	);
+
 		return new DataResponse($result);
 	}
 

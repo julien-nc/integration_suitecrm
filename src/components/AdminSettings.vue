@@ -5,11 +5,11 @@
 			{{ t('integration_suitecrm', 'SuiteCRM integration') }}
 		</h2>
 		<p class="settings-hint">
-			{{ t('integration_suitecrm', 'If you want to allow your Nextcloud users to use OAuth to authenticate to a SuiteCRM instance, create an application in your SuiteCRM admin settings and put the application ID (AppId) and secret below.') }}
+			{{ t('integration_suitecrm', 'If you want to allow your Nextcloud users to use OAuth to authenticate to a SuiteCRM instance, create a "new password client" in your SuiteCRM admin settings ("OAuth2 Clients and Tokens" section) and put the client ID and secret below.') }}
 			<br><br>
 			<span class="icon icon-details" />
-			{{ t('integration_suitecrm', 'Make sure you set the "Callback URL" to') }}
-			<b> {{ redirect_uri }} </b>
+			{{ t('integration_suitecrm', 'Make sure you created private and public keys for your SuiteCRM instance. Authentication won\'t work if those keys are missing.') }}
+			<a href="https://docs.suitecrm.com/developer/api/developer-setup-guide/json-api/#_generate_private_and_public_key_for_oauth2" target="_blank" class="external">{{ t('integration_suitecrm', 'SuiteCRM OAuth2 documentation') }}</a>
 		</p>
 		<div class="grid-form">
 			<label for="suitecrm-oauth-instance">
@@ -67,7 +67,6 @@ export default {
 			state: loadState('integration_suitecrm', 'admin-config'),
 			// to prevent some browsers to fill fields with remembered passwords
 			readonly: true,
-			redirect_uri: window.location.protocol + '//' + window.location.host + generateUrl('/apps/integration_suitecrm/oauth-redirect'),
 		}
 	},
 

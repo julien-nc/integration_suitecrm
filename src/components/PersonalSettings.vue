@@ -88,7 +88,6 @@
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
-import { delay } from '../utils'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 
 export default {
@@ -174,6 +173,7 @@ export default {
 			axios.get(url, req)
 				.then((response) => {
 					this.state.user_name = response.data.user_name
+					this.password = ''
 				})
 				.catch((error) => {
 					console.debug(error)
