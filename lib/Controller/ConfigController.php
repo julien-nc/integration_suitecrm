@@ -83,6 +83,14 @@ class ConfigController extends Controller {
 		$result = [];
 
 		if (isset($values['user_name']) && $values['user_name'] === '') {
+			$accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token', '');
+			$refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
+			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
+			$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
+			$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
+			$this->suitecrmAPIService->request(
+				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'logout', [], 'POST'
+			);
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', '');
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'token', '');
@@ -135,7 +143,7 @@ class ConfigController extends Controller {
 
 			$filter = urlencode('filter[user_name][eq]') . '=' . urlencode($login);
 			$info = $this->suitecrmAPIService->request(
-				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'Users?' . $filter
+				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'module/Users?' . $filter
 			);
 			$userName = $login;
 			$userId = '';

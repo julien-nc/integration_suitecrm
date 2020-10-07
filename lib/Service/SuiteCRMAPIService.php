@@ -350,7 +350,7 @@ class SuiteCRMAPIService {
 							string $clientID, string $clientSecret, string $userId,
 							string $endPoint, array $params = [], string $method = 'GET'): array {
 		try {
-			$url = $suitecrmUrl . '/Api/index.php/V8/module/' . $endPoint;
+			$url = $suitecrmUrl . '/Api/index.php/V8/' . $endPoint;
 			$options = [
 				'headers' => [
 					'Authorization'  => 'Bearer ' . $accessToken,
