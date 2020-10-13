@@ -19,6 +19,7 @@ use OCP\IUser;
 use OCP\Http\Client\IClientService;
 use OCP\Notification\IManager as INotificationManager;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ServerException;
 
 use OCA\SuiteCRM\AppInfo\Application;
 
@@ -394,13 +395,12 @@ class SuiteCRMAPIService {
 			} else {
 				return json_decode($body, true);
 			}
-		} catch (ClientException $e) {
-			$this->logger->warning('SuiteCRM API error : '.$e->getMessage(), array('app' => $this->appName));
+		} catch (ServerException | ClientException $e) {
 			$response = $e->getResponse();
 			$body = (string) $response->getBody();
-			// refresh token if it's invalid and we are using oauth
-			if ($response->getStatusCode() === 401 && strpos($body, 'access_denied') !== false) {
-				$this->logger->warning('Trying to REFRESH the access token', array('app' => $this->appName));
+			// try to refresh token if it's invalid
+			if ($response->getStatusCode() === 401) {
+				$this->logger->info('Trying to REFRESH the access token', ['app' => $this->appName]);
 				// try to refresh the token
 				$result = $this->requestOAuthAccessToken($suitecrmUrl, [
 					'client_id' => $clientID,
@@ -419,6 +419,7 @@ class SuiteCRMAPIService {
 					);
 				}
 			}
+			$this->logger->warning('SuiteCRM API error : '.$e->getMessage(), ['app' => $this->appName]);
 			return ['error' => $e->getMessage()];
 		}
 	}
@@ -465,7 +466,7 @@ class SuiteCRMAPIService {
 				return json_decode($body, true);
 			}
 		} catch (\Exception $e) {
-			$this->logger->warning('SuiteCRM OAuth error : '.$e->getMessage(), array('app' => $this->appName));
+			$this->logger->warning('SuiteCRM OAuth error : '.$e->getMessage(), ['app' => $this->appName]);
 			return ['error' => $e->getMessage()];
 		}
 	}
