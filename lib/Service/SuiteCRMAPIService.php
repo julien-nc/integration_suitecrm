@@ -179,19 +179,15 @@ class SuiteCRMAPIService {
 			preg_match('/record=([a-z0-9\-]+)/', $urlRedirect, $recordMatch);
 			if (($isCall || $isMeeting) && count($recordMatch) > 1) {
 				$recordId = $recordMatch[1];
-				$filters = [
-					urlencode('filter[id][eq]') . '=' . urlencode($recordId),
-				];
 				$module = $isCall ? 'Calls' : 'Meetings';
 				$elems = $this->request(
-					$url, $accessToken, $userId, 'module/' . $module . '?' . implode('&', $filters)
+					$url, $accessToken, $userId, 'module/' . $module . '/' . $recordId
 				);
-				if (!isset($elems['error']) && isset($elems['data']) && count($elems['data']) > 0
-					&& isset($elems['data'][0]['attributes']['date_start'])
+				if (!isset($elems['error']) && isset($elems['data']) && isset($elems['data']['attributes']['date_start'])
 				) {
-					$tsElem = (new \DateTime($elems['data'][0]['attributes']['date_start']))->getTimestamp();
+					$tsElem = (new \DateTime($elems['data']['attributes']['date_start']))->getTimestamp();
 					if ($tsElem > $tsNow) {
-						$alert['date_start'] = $elems['data'][0]['attributes']['date_start'];
+						$alert['date_start'] = $elems['data']['attributes']['date_start'];
 						$alert['type'] = $isCall ? 'call' : 'meeting';
 						$futureAlerts[] = $alert;
 					}
