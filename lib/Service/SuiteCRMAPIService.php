@@ -157,7 +157,6 @@ class SuiteCRMAPIService {
 	 */
 	public function getAlerts(string $url, string $accessToken, string $userId, ?string $since = null, ?int $limit = null): array {
 		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
-		$params = [];
 		$filters = [
 			urlencode('filter[assigned_user_id][eq]') . '=' . urlencode($scrmUserId),
 			urlencode('filter[is_read][eq]') . '=0',
@@ -223,100 +222,100 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $refreshToken
-	 * @param string $clientID
-	 * @param string $clientSecret
 	 * @param string $userId
 	 * @param string $query
+	 * @param int $offset
+	 * @param int $limit
 	 * @return array
 	 */
-	public function search(string $url, string $accessToken,
-							string $refreshToken, string $clientID, string $clientSecret, string $userId,
-							string $query): array {
-		$params = [
-			'query' => $query,
-			'limit' => 20,
+	public function search(string $url, string $accessToken, string $userId, string $query, int $offset = 0, int $limit = 5): array {
+		$combinedResults = [];
+		// contacts
+		$filters = [
+			'fields[Contacts]=name,first_name,last_name,full_name',
 		];
-		$searchResult = $this->request(
-			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/search', $params
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Contacts?' . implode('&', $filters)
 		);
-
-		$result = [];
-		if (isset($searchResult['assets']) && isset($searchResult['assets']['Ticket'])) {
-			foreach ($searchResult['assets']['Ticket'] as $id => $t) {
-				array_push($result, $t);
+		if (isset($result['error'])) {
+			return $result;
+		}
+		foreach ($result['data'] as $contact) {
+			$fullName = $contact['attributes']['full_name'];
+			if (preg_match('/' . $query . '/i', $fullName)) {
+				$contact['type'] = 'contact';
+				$combinedResults[] = $contact;
 			}
 		}
-		// get ticket state names
-		$states = $this->request(
-			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_states'
+		// accounts
+		$filters = [
+			'fields[Accounts]=name',
+		];
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Accounts?' . implode('&', $filters)
 		);
-		$statesById = [];
-		if (!isset($states['error'])) {
-			foreach ($states as $state) {
-				$id = $state['id'];
-				$name = $state['name'];
-				if ($id && $name) {
-					$statesById[$id] = $name;
-				}
+		if (isset($result['error'])) {
+			return $result;
+		}
+		foreach ($result['data'] as $account) {
+			$name = $account['attributes']['name'];
+			if (preg_match('/' . $query . '/i', $name)) {
+				$account['type'] = 'account';
+				$combinedResults[] = $account;
 			}
 		}
-		foreach ($result as $k => $v) {
-			if (array_key_exists($v['state_id'], $statesById)) {
-				$result[$k]['state_name'] = $statesById[$v['state_id']];
-			}
-		}
-		// get ticket priority names
-		$prios = $this->request(
-			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'ticket_priorities'
+		// leads
+		$filters = [
+			'fields[Leads]=name,full_name',
+		];
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Leads?' . implode('&', $filters)
 		);
-		$priosById = [];
-		if (!isset($prios['error'])) {
-			foreach ($prios as $prio) {
-				$id = $prio['id'];
-				$name = $prio['name'];
-				if ($id && $name) {
-					$priosById[$id] = $name;
-				}
+		if (isset($result['error'])) {
+			return $result;
+		}
+		foreach ($result['data'] as $elem) {
+			$name = $elem['attributes']['full_name'];
+			if (preg_match('/' . $query . '/i', $name)) {
+				$elem['type'] = 'lead';
+				$combinedResults[] = $elem;
 			}
 		}
-		foreach ($result as $k => $v) {
-			if (array_key_exists($v['priority_id'], $priosById)) {
-				$result[$k]['priority_name'] = $priosById[$v['priority_id']];
+		// Opportunities
+		$filters = [
+			'fields[Opportunities]=name,amount,currency_symbol,currency_name',
+		];
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Opportunities?' . implode('&', $filters)
+		);
+		if (isset($result['error'])) {
+			return $result;
+		}
+		foreach ($result['data'] as $elem) {
+			$name = $elem['attributes']['name'];
+			if (preg_match('/' . $query . '/i', $name)) {
+				$elem['type'] = 'opportunity';
+				$combinedResults[] = $elem;
 			}
 		}
-		// add owner information
-		$userIds = [];
-		$field = 'customer_id';
-		foreach ($result as $k => $v) {
-			if (!in_array($v[$field], $userIds)) {
-				array_push($userIds, $v[$field]);
+		// Cases
+		$filters = [
+			'fields[Cases]=name',
+		];
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Cases?' . implode('&', $filters)
+		);
+		if (isset($result['error'])) {
+			return $result;
+		}
+		foreach ($result['data'] as $elem) {
+			$name = $elem['attributes']['name'];
+			if (preg_match('/' . $query . '/i', $name)) {
+				$elem['type'] = 'case';
+				$combinedResults[] = $elem;
 			}
 		}
-		$userDetails = [];
-		foreach ($userIds as $uid) {
-			$user = $this->request(
-				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
-			);
-			if (!isset($user['error'])) {
-				$userDetails[$uid] = [
-					'firstname' => $user['firstname'],
-					'lastname' => $user['lastname'],
-					'organization_id' => $user['organization_id'],
-					'image' => $user['image'],
-				];
-			}
-		}
-		foreach ($result as $k => $v) {
-			if (array_key_exists($v[$field], $userDetails)) {
-				$user = $userDetails[$v[$field]];
-				$result[$k]['u_firstname'] = $user['firstname'];
-				$result[$k]['u_lastname'] = $user['lastname'];
-				$result[$k]['u_organization_id'] = $user['organization_id'];
-				$result[$k]['u_image'] = $user['image'];
-			}
-		}
-		return $result;
+		return array_slice($combinedResults, $offset, $limit);
 	}
 
 	/**

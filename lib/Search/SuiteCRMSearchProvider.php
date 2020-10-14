@@ -106,23 +106,17 @@ class SuiteCRMSearchProvider implements IProvider {
 		$offset = $offset ? intval($offset) : 0;
 
 		$theme = $this->config->getUserValue($user->getUID(), 'accessibility', 'theme', '');
-		$thumbnailUrl = ($theme === 'dark')
-			? $this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
-			: $this->urlGenerator->imagePath(Application::APP_ID, 'app-dark.svg');
+		$thumbnailUrl = $this->urlGenerator->imagePath(Application::APP_ID, 'app-color.svg');
 
 		$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 		$accessToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'token', '');
-		$refreshToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'refresh_token', '');
-		$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-		$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
 
 		$searchEnabled = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'search_enabled', '0') === '1';
 		if ($accessToken === '' || !$searchEnabled) {
 			return SearchResult::paginated($this->getName(), [], 0);
 		}
 
-		$searchResults = $this->service->search($suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $user->getUID(), $term);
-		$searchResults = array_slice($searchResults, $offset, $limit);
+		$searchResults = $this->service->search($suitecrmUrl, $accessToken, $user->getUID(), $term, $offset, $limit);
 
 		if (isset($searchResults['error'])) {
 			return SearchResult::paginated($this->getName(), [], 0);
@@ -135,7 +129,7 @@ class SuiteCRMSearchProvider implements IProvider {
 				$this->getSubline($entry),
 				$this->getLinkToSuiteCRM($entry, $suitecrmUrl),
 				'',
-				true
+				false
 			);
 		}, $searchResults);
 
@@ -151,7 +145,17 @@ class SuiteCRMSearchProvider implements IProvider {
 	 * @return string
 	 */
 	protected function getMainText(array $entry): string {
-		return $entry['title'];
+		if ($entry['type'] === 'contact') {
+			return $entry['attributes']['full_name'];
+		} elseif ($entry['type'] === 'account') {
+			return $entry['attributes']['name'];
+		} elseif ($entry['type'] === 'lead') {
+			return $entry['attributes']['full_name'];
+		} elseif ($entry['type'] === 'opportunity') {
+			return $entry['attributes']['name'];
+		} elseif ($entry['type'] === 'case') {
+			return $entry['attributes']['name'];
+		}
 	}
 
 	/**
@@ -159,24 +163,18 @@ class SuiteCRMSearchProvider implements IProvider {
 	 * @return string
 	 */
 	protected function getSubline(array $entry): string {
-		$priorityName = $entry['priority_name']
-			? $entry['priority_name']
-			: $entry['priority_id'];
-		$prefix = $entry['state_name']
-			? '[' . $this->truncate($entry['state_name'], 10) . '/' . $priorityName . '] '
-			: '[' . $priorityName . '] ';
-		return $prefix . $entry['u_firstname'] . ' ' . $entry['u_lastname'];
-	}
-
-	/**
-	 * @param string $s
-	 * @param int $len
-	 * @return string
-	 */
-	private function truncate(string $s, int $len): string {
-		return strlen($s) > $len
-			? substr($s, 0, $len) . '…'
-			: $s;
+		if ($entry['type'] === 'contact') {
+			return '👤 ' . $this->l10n->t('Contact');
+		} elseif ($entry['type'] === 'account') {
+			return '🛡 ' . $this->l10n->t('Account');
+		} elseif ($entry['type'] === 'lead') {
+			return '💥 ' . $this->l10n->t('Lead');
+		} elseif ($entry['type'] === 'opportunity') {
+			return '💡 ' . $this->l10n->t('Opportunity')
+				. ' (' . $entry['attributes']['amount'] . ' ' . ($entry['attributes']['currency_symbol'] ?? $entry['attributes']['currency_name']) . ')';
+		} elseif ($entry['type'] === 'case') {
+			return '📁 ' . $this->l10n->t('Case');
+		}
 	}
 
 	/**
@@ -185,7 +183,17 @@ class SuiteCRMSearchProvider implements IProvider {
 	 * @return string
 	 */
 	protected function getLinkToSuiteCRM(array $entry, string $url): string {
-		return $url . '/#ticket/zoom/' . $entry['id'];
+		if ($entry['type'] === 'contact') {
+			return $url . '/index.php?module=Contacts&action=DetailView&record=' . $entry['id'];
+		} elseif ($entry['type'] === 'account') {
+			return $url . '/index.php?module=Accounts&action=DetailView&record=' . $entry['id'];
+		} elseif ($entry['type'] === 'lead') {
+			return $url . '/index.php?module=Leads&action=DetailView&record=' . $entry['id'];
+		} elseif ($entry['type'] === 'opportunity') {
+			return $url . '/index.php?module=Opportunities&action=DetailView&record=' . $entry['id'];
+		} elseif ($entry['type'] === 'case') {
+			return $url . '/index.php?module=Cases&action=DetailView&record=' . $entry['id'];
+		}
 	}
 
 	/**
@@ -194,14 +202,6 @@ class SuiteCRMSearchProvider implements IProvider {
 	 * @return string
 	 */
 	protected function getThumbnailUrl(array $entry, string $thumbnailUrl): string {
-		$initials = null;
-		if ($entry['u_firstname'] && $entry['u_lastname']) {
-			$initials = $entry['u_firstname'][0] . $entry['u_lastname'][0];
-		}
-		return isset($entry['u_image'])
-			? $this->urlGenerator->linkToRoute('integration_suitecrm.suitecrmAPI.getSuiteCRMAvatar', []) . '?image=' . urlencode($entry['u_image'])
-			: ($initials
-				? $this->urlGenerator->linkToRouteAbsolute('core.GuestAvatar.getAvatar', ['guestName' => $initials, 'size' => 64])
-				: $thumbnailUrl);
+		return $thumbnailUrl;
 	}
 }
