@@ -84,10 +84,10 @@ class SuiteCRMAPIController extends Controller {
 	 * @param string $image
 	 * @return DataDisplayResponse
 	 */
-	public function getSuiteCRMAvatar(string $image = ''): DataDisplayResponse {
+	public function getSuiteCRMAvatar(string $suiteUserId = ''): DataDisplayResponse {
 		$response = new DataDisplayResponse(
 			$this->suitecrmAPIService->getSuiteCRMAvatar(
-				$this->suitecrmUrl, $this->accessToken, $this->refreshToken, $this->clientID, $this->clientSecret, $image
+				$this->suitecrmUrl, $this->accessToken, $suiteUserId
 			)
 		);
 		$response->cacheFor(60*60*24);

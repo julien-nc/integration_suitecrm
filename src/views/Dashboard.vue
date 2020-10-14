@@ -155,8 +155,8 @@ export default {
 			return n.attributes.created_by_name
 		},
 		getAuthorAvatarUrl(n) {
-			return (n.image)
-				? generateUrl('/apps/integration_suitecrm/avatar?') + encodeURIComponent('suiteUserId') + '=' + encodeURIComponent(n.attributes.created_by_name)
+			return (n.attributes.created_by)
+				? generateUrl('/apps/integration_suitecrm/avatar?') + encodeURIComponent('suiteUserId') + '=' + encodeURIComponent(n.attributes.created_by)
 				: ''
 		},
 		getNotificationTypeImage(n) {

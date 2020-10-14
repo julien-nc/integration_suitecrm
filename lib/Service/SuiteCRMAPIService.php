@@ -328,16 +328,13 @@ class SuiteCRMAPIService {
 	 *
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $refreshToken
-	 * @param string $clientID
-	 * @param string $clientSecret
-	 * @param string $image
+	 * @param string $suiteUserId
 	 * @return string
 	 */
 	public function getSuiteCRMAvatar(string $url,
-									string $accessToken, string $refreshToken, string $clientID, string $clientSecret,
-									string $image): string {
-		$url = $url . '/api/v1/users/image/' . $image;
+									string $accessToken,
+									string $suiteUserId): string {
+		$url = $url . '/index.php?entryPoint=download&id=' . urlencode($suiteUserId) . '_photo&type=Users';
 		$options = [
 			'headers' => [
 				'Authorization'  => 'Bearer ' . $accessToken,
