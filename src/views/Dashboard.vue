@@ -72,7 +72,7 @@ export default {
 		},
 		lastDate() {
 			const nbNotif = this.notifications.length
-			return (nbNotif > 0) ? this.notifications[0].updated_at : null
+			return (nbNotif > 0) ? this.notifications[0].date_start : null
 		},
 		lastMoment() {
 			return moment(this.lastDate)
@@ -117,15 +117,10 @@ export default {
 			}
 			// then launch the loop
 			this.fetchNotifications()
-			this.loop = setInterval(() => this.fetchNotifications(), 60000)
+			this.loop = setInterval(() => this.fetchNotifications(), 20000)
 		},
 		fetchNotifications() {
 			const req = {}
-			if (this.lastDate) {
-				req.params = {
-					since: this.lastDate,
-				}
-			}
 			axios.get(generateUrl('/apps/integration_suitecrm/notifications'), req).then((response) => {
 				this.processNotifications(response.data)
 				this.state = 'ok'
@@ -143,71 +138,43 @@ export default {
 			})
 		},
 		processNotifications(newNotifications) {
-			if (this.lastDate) {
-				// just add those which are more recent than our most recent one
-				let i = 0
-				while (i < newNotifications.length && this.lastMoment.isBefore(newNotifications[i].updated_at)) {
-					i++
-				}
-				if (i > 0) {
-					const toAdd = this.filter(newNotifications.slice(0, i))
-					this.notifications = toAdd.concat(this.notifications)
-				}
-			} else {
-				// first time we don't check the date
-				this.notifications = this.filter(newNotifications)
-			}
+			// always replace notifications as one might have been added
+			// in the middle of the ones we already have
+			this.notifications = this.filter(newNotifications)
 		},
 		filter(notifications) {
 			return notifications
 		},
 		getNotificationTarget(n) {
-			return this.suitecrmUrl + '/#ticket/zoom/' + n.o_id
+			return this.suitecrmUrl + '/' + n.attributes.url_redirect
 		},
 		getUniqueKey(n) {
-			return n.id + ':' + n.updated_at
+			return n.id
 		},
 		getAuthorShortName(n) {
-			if (!n.firstname && !n.lastname) {
-				return '?'
-			} else {
-				return (n.firstname ? n.firstname[0] : '')
-					+ (n.lastname ? n.lastname[0] : '')
-			}
-		},
-		getAuthorFullName(n) {
-			return n.firstname + ' ' + n.lastname
+			return n.attributes.created_by_name
 		},
 		getAuthorAvatarUrl(n) {
 			return (n.image)
-				? generateUrl('/apps/integration_suitecrm/avatar?') + encodeURIComponent('image') + '=' + encodeURIComponent(n.image)
+				? generateUrl('/apps/integration_suitecrm/avatar?') + encodeURIComponent('suiteUserId') + '=' + encodeURIComponent(n.attributes.created_by_name)
 				: ''
 		},
-		getNotificationProjectName(n) {
-			return ''
-		},
-		getNotificationContent(n) {
-			return ''
-		},
 		getNotificationTypeImage(n) {
-			if (n.type_lookup_id === 2 || n.type === 'update') {
+			if (n.type === 'call') {
 				return generateUrl('/svg/integration_suitecrm/rename?color=ffffff')
-			} else if (n.type_lookup_id === 3 || n.type === 'create') {
+			} else if (n.type === 'meeting') {
 				return generateUrl('/svg/integration_suitecrm/add?color=ffffff')
 			}
 			return generateUrl('/svg/core/actions/sound?color=' + this.themingColor)
 		},
 		getSubline(n) {
-			return this.getAuthorFullName(n) + ' #' + n.o_id
+			return n.attributes.description
 		},
 		getTargetTitle(n) {
-			return n.title
+			return n.attributes.name
 		},
 		getTargetIdentifier(n) {
 			return n.o_id
-		},
-		getFormattedDate(n) {
-			return moment(n.updated_at).format('LLL')
 		},
 	},
 }

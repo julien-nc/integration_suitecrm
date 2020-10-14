@@ -89,7 +89,7 @@ class ConfigController extends Controller {
 			$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
 			$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
 			$this->suitecrmAPIService->request(
-				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'logout', [], 'POST'
+				$suitecrmUrl, $accessToken, $this->userId, 'logout', [], 'POST'
 			);
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', '');
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
@@ -100,15 +100,6 @@ class ConfigController extends Controller {
 				'user_name' => '',
 			];
 		}
-
-		//	$accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token', '');
-		//	$refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
-		//	$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
-		//	$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-		//	$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-		//	$info = $this->suitecrmAPIService->request(
-		//		$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'module/Users'
-		//	);
 
 		return new DataResponse($result);
 	}
@@ -152,7 +143,7 @@ class ConfigController extends Controller {
 
 			$filter = urlencode('filter[user_name][eq]') . '=' . urlencode($login);
 			$info = $this->suitecrmAPIService->request(
-				$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $this->userId, 'module/Users?' . $filter
+				$suitecrmUrl, $accessToken, $this->userId, 'module/Users?' . $filter
 			);
 			$userName = $login;
 			$userId = '';

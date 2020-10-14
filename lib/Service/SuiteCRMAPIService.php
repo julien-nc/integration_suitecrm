@@ -132,85 +132,96 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $url
 	 * @param string $accessToken
-	 * @param string $refreshToken
-	 * @param string $clientID
-	 * @param string $clientSecret
 	 * @param string $userId
 	 * @param ?string $since
 	 * @param ?int $limit
 	 * @return array
 	 */
-	public function getNotifications(string $url, string $accessToken,
-									string $refreshToken, string $clientID, string $clientSecret, string $userId,
+	public function getNotifications(string $url, string $accessToken, string $userId,
 									?string $since = null, ?int $limit = null): array {
-		$params = [
-			'state' => 'pending',
+		return $this->getAlerts($url, $accessToken, $userId, $since);
+	}
+
+	/**
+	 * get user alerts that are
+	 * - in the future
+	 * - not already read
+	 * - after since (if defined)
+	 *
+	 * @param string $url
+	 * @param string $accessToken
+	 * @param string $userId
+	 * @param ?string $since
+	 * @param ?int $limit
+	 * @return array
+	 */
+	public function getAlerts(string $url, string $accessToken, string $userId, ?string $since = null, ?int $limit = null): array {
+		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
+		$params = [];
+		$filters = [
+			urlencode('filter[assigned_user_id][eq]') . '=' . urlencode($scrmUserId),
+			urlencode('filter[is_read][eq]') . '=0',
 		];
 		$result = $this->request(
-			$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'online_notifications', $params
+			$url, $accessToken, $userId, 'module/Alerts?' . implode('&', $filters)
 		);
 		if (isset($result['error'])) {
 			return $result;
 		}
-		// filter seen ones
-		$result = array_filter($result, function($elem) {
-			return !$elem['seen'];
-		});
+		// get target date for calls and meetings
+		$tsNow = (new \DateTime())->getTimestamp();
+		$futureAlerts = [];
+		foreach ($result['data'] as $alert) {
+			$urlRedirect = $alert['attributes']['url_redirect'];
+			$isCall = preg_match('/module=Calls/', $urlRedirect);
+			$isMeeting = preg_match('/module=Meetings/', $urlRedirect);
+			$recordMatch = [];
+			preg_match('/record=([a-z0-9\-]+)/', $urlRedirect, $recordMatch);
+			if (($isCall || $isMeeting) && count($recordMatch) > 1) {
+				$recordId = $recordMatch[1];
+				$filters = [
+					urlencode('filter[id][eq]') . '=' . urlencode($recordId),
+				];
+				$module = $isCall ? 'Calls' : 'Meetings';
+				$elems = $this->request(
+					$url, $accessToken, $userId, 'module/' . $module . '?' . implode('&', $filters)
+				);
+				if (!isset($elems['error']) && isset($elems['data']) && count($elems['data']) > 0
+					&& isset($elems['data'][0]['attributes']['date_start'])
+				) {
+					$tsElem = (new \DateTime($elems['data'][0]['attributes']['date_start']))->getTimestamp();
+					if ($tsElem > $tsNow) {
+						$alert['date_start'] = $elems['data'][0]['attributes']['date_start'];
+						$alert['type'] = $isCall ? 'call' : 'meeting';
+						$futureAlerts[] = $alert;
+					}
+				}
+			}
+		}
 		// filter results by date
 		if (!is_null($since)) {
 			$sinceDate = new \DateTime($since);
 			$sinceTimestamp = $sinceDate->getTimestamp();
-			$result = array_filter($result, function($elem) use ($sinceTimestamp) {
-				$date = new \Datetime($elem['updated_at']);
+			$futureAlerts = array_filter($futureAlerts, function($elem) use ($sinceTimestamp) {
+				$date = new \DateTime($elem['date_start']);
 				$ts = $date->getTimestamp();
 				return $ts > $sinceTimestamp;
 			});
 		}
+		// sort by date
+		$a = usort($futureAlerts, function($a, $b) {
+			$a = new \Datetime($a['date_start']);
+			$ta = $a->getTimestamp();
+			$b = new \Datetime($b['date_start']);
+			$tb = $b->getTimestamp();
+			return ($ta < $tb) ? -1 : 1;
+		});
 		if ($limit) {
-			$result = array_slice($result, 0, $limit);
+			$futureAlerts = array_slice($futureAlerts, 0, $limit);
 		}
-		$result = array_values($result);
-		// get details
-		foreach ($result as $k => $v) {
-			$details = $this->request(
-				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'tickets/' . $v['o_id']
-			);
-			if (!isset($details['error'])) {
-				$result[$k]['title'] = $details['title'];
-				$result[$k]['note'] = $details['note'];
-				$result[$k]['state_id'] = $details['state_id'];
-				$result[$k]['owner_id'] = $details['owner_id'];
-				$result[$k]['type'] = $details['type'];
-			}
-		}
-		// get user details
-		$userIds = [];
-		foreach ($result as $k => $v) {
-			if (!in_array($v['updated_by_id'], $userIds)) {
-				array_push($userIds, $v['updated_by_id']);
-			}
-		}
-		$userDetails = [];
-		foreach ($userIds as $uid) {
-			$user = $this->request(
-				$url, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/' . $uid
-			);
-			$userDetails[$uid] = [
-				'firstname' => $user['firstname'],
-				'lastname' => $user['lastname'],
-				'organization_id' => $user['organization_id'],
-				'image' => $user['image'],
-			];
-		}
-		foreach ($result as $k => $v) {
-			$user = $userDetails[$v['updated_by_id']];
-			$result[$k]['firstname'] = $user['firstname'];
-			$result[$k]['lastname'] = $user['lastname'];
-			$result[$k]['organization_id'] = $user['organization_id'];
-			$result[$k]['image'] = $user['image'];
-		}
+		$futureAlerts = array_values($futureAlerts);
 
-		return $result;
+		return $futureAlerts;
 	}
 
 	/**
@@ -339,16 +350,13 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $suitecrmUrl
 	 * @param string $accessToken
-	 * @param string $refreshToken
-	 * @param string $clientID
-	 * @param string $clientSecret
+	 * @param string $userId
 	 * @param string $endPoint
 	 * @param array $params
 	 * @param string $method
 	 * @return array
 	 */
-	public function request(string $suitecrmUrl, string $accessToken, string $refreshToken,
-							string $clientID, string $clientSecret, string $userId,
+	public function request(string $suitecrmUrl, string $accessToken, string $userId,
 							string $endPoint, array $params = [], string $method = 'GET'): array {
 		try {
 			$url = $suitecrmUrl . '/Api/index.php/V8/' . $endPoint;
@@ -401,6 +409,9 @@ class SuiteCRMAPIService {
 			// try to refresh token if it's invalid
 			if ($response->getStatusCode() === 401) {
 				$this->logger->info('Trying to REFRESH the access token', ['app' => $this->appName]);
+				$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token', '');
+				$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
+				$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
 				// try to refresh the token
 				$result = $this->requestOAuthAccessToken($suitecrmUrl, [
 					'client_id' => $clientID,
@@ -415,7 +426,7 @@ class SuiteCRMAPIService {
 					$this->config->setUserValue($userId, Application::APP_ID, 'refresh_token', $refreshToken);
 					// retry the request with new access token
 					return $this->request(
-						$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $endPoint, $params, $method
+						$suitecrmUrl, $accessToken, $userId, $endPoint, $params, $method
 					);
 				}
 			}
@@ -470,5 +481,4 @@ class SuiteCRMAPIService {
 			return ['error' => $e->getMessage()];
 		}
 	}
-
 }

@@ -106,7 +106,7 @@ class SuiteCRMAPIController extends Controller {
 			return new DataResponse('', 400);
 		}
 		$result = $this->suitecrmAPIService->getNotifications(
-			$this->suitecrmUrl, $this->accessToken, $this->refreshToken, $this->clientID, $this->clientSecret, $this->userId, $since, 7
+			$this->suitecrmUrl, $this->accessToken, $this->userId, $since, 7
 		);
 		if (!isset($result['error'])) {
 			$response = new DataResponse($result);
