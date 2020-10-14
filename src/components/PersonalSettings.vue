@@ -178,7 +178,8 @@ export default {
 				.catch((error) => {
 					console.debug(error)
 					if (error.response) {
-						if (error.response.data && error.response.data.error) {
+						// if (error.response.data && error.response.data.error) {
+						if (error.response?.data?.error) {
 							showError(
 								t('integration_suitecrm', 'Failed')
 								+ ': ' + error.response.data.error
@@ -203,12 +204,15 @@ export default {
 #suitecrm-search-block {
 	margin-top: 30px;
 }
+
 .suitecrm-grid-form label {
 	line-height: 38px;
 }
+
 .suitecrm-grid-form input {
 	width: 100%;
 }
+
 .suitecrm-grid-form {
 	max-width: 600px;
 	display: grid;
@@ -217,26 +221,33 @@ export default {
 		margin-bottom: -1px;
 	}
 }
+
 #suitecrm_prefs .icon {
 	display: inline-block;
 	width: 32px;
 }
+
 #suitecrm_prefs .grid-form .icon {
 	margin-bottom: -3px;
 }
+
 .icon-suitecrm {
 	background-image: url(./../../img/app-dark.svg);
 	background-size: 23px 23px;
 	height: 23px;
 	margin-bottom: -4px;
 }
+
 body.theme--dark .icon-suitecrm {
 	background-image: url(./../../img/app.svg);
 }
+
 #suitecrm-content {
 	margin-left: 40px;
 }
+
 #suitecrm-search-block .icon {
 	width: 22px;
 }
+
 </style>

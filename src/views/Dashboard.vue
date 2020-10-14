@@ -117,7 +117,7 @@ export default {
 			}
 			// then launch the loop
 			this.fetchNotifications()
-			this.loop = setInterval(() => this.fetchNotifications(), 20000)
+			this.loop = setInterval(() => this.fetchNotifications(), 120000)
 		},
 		fetchNotifications() {
 			const req = {}
