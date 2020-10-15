@@ -177,7 +177,7 @@ export default {
 		},
 		getSubline(n) {
 			const mom = moment.unix(n.attributes.date_willexecute)
-			const date = mom.format('L') + ' ' + mom.format('H:m')
+			const date = mom.format('L') + ' ' + mom.format('HH:mm')
 			if (n.attributes.related_event_module === 'Calls') {
 				return t('integration_suitecrm', 'Call at {date}', { date })
 			} else if (n.attributes.related_event_module === 'Meetings') {
