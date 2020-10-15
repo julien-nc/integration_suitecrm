@@ -117,20 +117,6 @@ class SuiteCRMAPIService {
 	}
 
 	/**
-	 * @param string $url
-	 * @param string $accessToken
-	 * @param string $userId
-	 * @param ?string $since
-	 * @param ?int $limit
-	 * @return array
-	 */
-	public function getNotifications(string $url, string $accessToken, string $userId,
-									?string $since = null, ?int $limit = null): array {
-		// TODO here we should get upcoming planned calls and meetings (not alerts)
-		return $this->getReminders($url, $accessToken, $userId);
-	}
-
-	/**
 	 * Get reminders about stuff assigned to connected user:
 	 * - related to call/meeting assigned to the user
 	 * - for an event in the future
@@ -144,16 +130,25 @@ class SuiteCRMAPIService {
 	 * @param ?int $limit
 	 * @return array
 	 */
-	public function getReminders(string $url, string $accessToken, string $userId, ?int $sinceTs = null, ?int $untilTs = null, ?int $limit = null): array {
+	public function getReminders(string $url, string $accessToken, string $userId,
+								?int $reminderSinceTs = null, ?int $reminderUntilTs = null,
+								?int $eventSinceTs = null, ?int $eventUntilTs = null,
+								?int $limit = null): array {
 		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
 		$filters = [];
-		if (!is_null($sinceTs)) {
-			$filters[] = 'filter[date_willexecute][gt]=' . $sinceTs;
+		if (!is_null($reminderSinceTs)) {
+			$filters[] = 'filter[date_willexecute][gt]=' . $reminderSinceTs;
 		}
-		if (!is_null($untilTs)) {
+		if (!is_null($reminderUntilTs)) {
 			// date_willexecute is actually the date of the event, not the reminder one...
 			// so we make sure we get the max reminder popup_timer
-			$filters[] = 'filter[date_willexecute][lt]=' . ($untilTs + (60 * 60 * 24));
+			$filters[] = 'filter[date_willexecute][lt]=' . ($reminderUntilTs + (60 * 60 * 24));
+		}
+		if (!is_null($eventSinceTs)) {
+			$filters[] = 'filter[date_willexecute][gt]=' . $eventSinceTs;
+		}
+		if (!is_null($eventUntilTs)) {
+			$filters[] = 'filter[date_willexecute][lt]=' . $eventUntilTs;
 		}
 		$result = $this->request(
 			$url, $accessToken, $userId, 'module/Reminders?' . implode('&filter[operator]=and&', $filters)
@@ -167,10 +162,10 @@ class SuiteCRMAPIService {
 		foreach ($result['data'] as $reminder) {
 			// apply time filter on real reminder date
 			$realReminderTs = (int) $reminder['attributes']['date_willexecute'] - (int) $reminder['attributes']['timer_popup'];
-			if (!is_null($sinceTs) && $realReminderTs < $sinceTs) {
+			if (!is_null($reminderSinceTs) && $realReminderTs < $reminderSinceTs) {
 				continue;
 			}
-			if (!is_null($untilTs) && $realReminderTs > $untilTs) {
+			if (!is_null($reminderUntilTs) && $realReminderTs > $reminderUntilTs) {
 				continue;
 			}
 			$reminder['real_reminder_timestamp'] = $realReminderTs;

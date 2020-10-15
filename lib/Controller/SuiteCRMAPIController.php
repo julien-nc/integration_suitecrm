@@ -95,18 +95,18 @@ class SuiteCRMAPIController extends Controller {
 	}
 
 	/**
-	 * get notifications list
+	 * get reminder list for future events
 	 * @NoAdminRequired
 	 *
-	 * @param ?string $since
+	 * @param ?int $since
 	 * @return DataResponse
 	 */
-	public function getNotifications(?string $since = null): DataResponse {
+	public function getReminders(int $eventSinceTimestamp = null, ?int $limit = null): DataResponse {
 		if ($this->accessToken === '') {
 			return new DataResponse('', 400);
 		}
-		$result = $this->suitecrmAPIService->getNotifications(
-			$this->suitecrmUrl, $this->accessToken, $this->userId, $since, 7
+		$result = $this->suitecrmAPIService->getReminders(
+			$this->suitecrmUrl, $this->accessToken, $this->userId, null, null, $eventSinceTimestamp, null, $limit
 		);
 		if (!isset($result['error'])) {
 			$response = new DataResponse($result);

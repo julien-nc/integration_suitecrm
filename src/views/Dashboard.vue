@@ -55,7 +55,7 @@ export default {
 
 	computed: {
 		showMoreUrl() {
-			return this.suitecrmUrl + '/#dashboard'
+			return this.suitecrmUrl + '/index.php?module=Home&action=index'
 		},
 		items() {
 			return this.notifications.map((n) => {
@@ -120,8 +120,12 @@ export default {
 			this.loop = setInterval(() => this.fetchNotifications(), 120000)
 		},
 		fetchNotifications() {
-			const req = {}
-			axios.get(generateUrl('/apps/integration_suitecrm/notifications'), req).then((response) => {
+			const req = {
+				params: {
+					eventSinceTimestamp: moment().unix(),
+				},
+			}
+			axios.get(generateUrl('/apps/integration_suitecrm/reminders'), req).then((response) => {
 				this.processNotifications(response.data)
 				this.state = 'ok'
 			}).catch((error) => {
@@ -129,7 +133,7 @@ export default {
 				if (error.response && error.response.status === 400) {
 					this.state = 'no-token'
 				} else if (error.response && error.response.status === 401) {
-					showError(t('integration_suitecrm', 'Failed to get SuiteCRM notifications'))
+					showError(t('integration_suitecrm', 'Failed to get SuiteCRM reminders'))
 					this.state = 'error'
 				} else {
 					// there was an error in notif processing
@@ -138,7 +142,7 @@ export default {
 			})
 		},
 		processNotifications(newNotifications) {
-			// always replace notifications as one might have been added
+			// always replace reminders as one might have been added
 			// in the middle of the ones we already have
 			this.notifications = this.filter(newNotifications)
 		},
@@ -146,7 +150,8 @@ export default {
 			return notifications
 		},
 		getNotificationTarget(n) {
-			return this.suitecrmUrl + '/' + n.attributes.url_redirect
+			return this.suitecrmUrl + '/index.php?module=' + n.attributes.related_event_module
+				+ '&action=DetailView&record=' + n.attributes.related_event_module_id
 		},
 		getUniqueKey(n) {
 			return n.id
@@ -160,21 +165,25 @@ export default {
 				: ''
 		},
 		getNotificationTypeImage(n) {
-			if (n.type === 'call') {
+			if (n.attributes.related_event_module === 'Calls') {
 				return generateUrl('/svg/integration_suitecrm/rename?color=ffffff')
-			} else if (n.type === 'meeting') {
+			} else if (n.attributes.related_event_module === 'Meetings') {
 				return generateUrl('/svg/integration_suitecrm/add?color=ffffff')
 			}
 			return generateUrl('/svg/core/actions/sound?color=' + this.themingColor)
 		},
 		getSubline(n) {
-			return n.attributes.description
+			const mom = moment.unix(n.attributes.date_willexecute)
+			const date = mom.format('L') + ' ' + mom.format('H:m')
+			if (n.attributes.related_event_module === 'Calls') {
+				return t('integration_suitecrm', 'Call at {date}', { date })
+			} else if (n.attributes.related_event_module === 'Meetings') {
+				return t('integration_suitecrm', 'Meeting at {date}', { date })
+			}
+			return ''
 		},
 		getTargetTitle(n) {
-			return n.attributes.name
-		},
-		getTargetIdentifier(n) {
-			return n.o_id
+			return n.title
 		},
 	},
 }

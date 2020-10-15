@@ -14,7 +14,7 @@ return [
         ['name' => 'config#oauthConnect', 'url' => '/oauth-connect', 'verb' => 'GET'],
         ['name' => 'config#setConfig', 'url' => '/config', 'verb' => 'PUT'],
         ['name' => 'config#setAdminConfig', 'url' => '/admin-config', 'verb' => 'PUT'],
-        ['name' => 'suiteCRMAPI#getNotifications', 'url' => '/notifications', 'verb' => 'GET'],
+        ['name' => 'suiteCRMAPI#getReminders', 'url' => '/reminders', 'verb' => 'GET'],
         ['name' => 'suiteCRMAPI#getSuiteCRMUrl', 'url' => '/url', 'verb' => 'GET'],
         ['name' => 'suiteCRMAPI#getSuiteCRMAvatar', 'url' => '/avatar', 'verb' => 'GET'],
     ]

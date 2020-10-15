@@ -43,14 +43,14 @@ class SuiteCRMWidget implements IWidget {
 	 * @inheritDoc
 	 */
 	public function getId(): string {
-		return 'suitecrm_notifications';
+		return 'suitecrm_events';
 	}
 
 	/**
 	 * @inheritDoc
 	 */
 	public function getTitle(): string {
-		return $this->l10n->t('SuiteCRM notifications');
+		return $this->l10n->t('SuiteCRM events');
 		}
 
 	/**
