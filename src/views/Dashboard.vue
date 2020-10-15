@@ -22,7 +22,7 @@
 
 <script>
 import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
+import { generateUrl, imagePath } from '@nextcloud/router'
 import { DashboardWidget } from '@nextcloud/vue-dashboard'
 import { showError } from '@nextcloud/dialogs'
 import moment from '@nextcloud/moment'
@@ -62,9 +62,9 @@ export default {
 				return {
 					id: this.getUniqueKey(n),
 					targetUrl: this.getNotificationTarget(n),
-					avatarUrl: this.getAuthorAvatarUrl(n),
+					avatarUrl: this.getAvatarUrl(n),
 					avatarUsername: this.getAuthorShortName(n),
-					overlayIconUrl: this.getNotificationTypeImage(n),
+					// overlayIconUrl: this.getNotificationTypeImage(n),
 					mainText: this.getTargetTitle(n),
 					subText: this.getSubline(n),
 				}
@@ -159,10 +159,13 @@ export default {
 		getAuthorShortName(n) {
 			return n.attributes.created_by_name
 		},
-		getAuthorAvatarUrl(n) {
-			return (n.attributes.created_by)
-				? generateUrl('/apps/integration_suitecrm/avatar?') + encodeURIComponent('suiteUserId') + '=' + encodeURIComponent(n.attributes.created_by)
-				: ''
+		getAvatarUrl(n) {
+			if (n.attributes.related_event_module === 'Calls') {
+				return imagePath('integration_suitecrm', 'call.png')
+			} else if (n.attributes.related_event_module === 'Meetings') {
+				return imagePath('integration_suitecrm', 'meeting.png')
+			}
+			return ''
 		},
 		getNotificationTypeImage(n) {
 			if (n.attributes.related_event_module === 'Calls') {
