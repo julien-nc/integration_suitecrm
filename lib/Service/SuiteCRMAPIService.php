@@ -54,9 +54,9 @@ class SuiteCRMAPIService {
 	 *
 	 * @return void
 	 */
-	public function checkOpenTickets(): void {
+	public function checkAlerts(): void {
 		$this->userManager->callForAllUsers(function (IUser $user) {
-			$this->checkOpenTicketsForUser($user->getUID());
+			$this->checkAlertsForUser($user->getUID());
 		});
 	}
 
@@ -64,20 +64,31 @@ class SuiteCRMAPIService {
 	 * @param string $userId
 	 * @return void
 	 */
-	private function checkOpenTicketsForUser(string $userId): void {
+	private function checkAlertsForUser(string $userId): void {
 		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, 'token', '');
-		if ($accessToken) {
+		$notificationEnabled = ($this->config->getUserValue($userId, Application::APP_ID, 'notification_enabled', '0') === '1');
+		if ($accessToken && $notificationEnabled) {
 			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
 			$lastReminderCheck = (int) $this->config->getUserValue($userId, Application::APP_ID, 'last_reminder_check', '0');
+			if ($lastReminderCheck === 0) {
+				// back one week
+				$d = new \DateTime();
+				$d->sub(new \DateInterval('P1W'));
+				$lastReminderCheck = $d->getTimestamp();
+			}
 
-			$alerts = $this->getAlerts($suitecrmUrl, $accessToken, $userId, $lastReminderCheck);
-			if (!isset($alerts['error']) && count($alerts) > 0) {
-				foreach ($alerts as $alert) {
-					$lastReminderCheck = $alert['date_willexecute'];
+			$tsNow = (new \DateTime())->getTimestamp();
+			$reminders = $this->getReminders($suitecrmUrl, $accessToken, $userId, $lastReminderCheck, $tsNow);
+			if (!isset($reminders['error']) && count($reminders) > 0) {
+				foreach ($reminders as $reminder) {
+					$lastReminderCheck = $reminder['real_reminder_timestamp'];
+					$module = $reminder['attributes']['related_event_module'];
+					$elemId = $reminder['attributes']['related_event_module_id'];
 					$this->sendNCNotification($userId, 'reminder', [
-						'type' => $alert['type'],
-						'title' => $alert['attributes']['name'],
-						'date_start' => $alert['date_start'],
+						'type' => $module,
+						'link' => $suitecrmUrl . '/index.php?module=' . $module . '&action=DetailView&record=' . $elemId,
+						'title' => $reminder['title'],
+						'event_timestamp' => $reminder['attributes']['date_willexecute'],
 					]);
 				}
 				// update last check date
@@ -116,10 +127,83 @@ class SuiteCRMAPIService {
 	public function getNotifications(string $url, string $accessToken, string $userId,
 									?string $since = null, ?int $limit = null): array {
 		// TODO here we should get upcoming planned calls and meetings (not alerts)
-		return $this->getAlerts($url, $accessToken, $userId, $since);
+		return $this->getReminders($url, $accessToken, $userId);
 	}
 
 	/**
+	 * Get reminders about stuff assigned to connected user:
+	 * - related to call/meeting assigned to the user
+	 * - for an event in the future
+	 * - not already read
+	 * - reminder set after $since (if defined)
+	 *
+	 * @param string $url
+	 * @param string $accessToken
+	 * @param string $userId
+	 * @param ?int $sinceTs
+	 * @param ?int $limit
+	 * @return array
+	 */
+	public function getReminders(string $url, string $accessToken, string $userId, ?int $sinceTs = null, ?int $untilTs = null, ?int $limit = null): array {
+		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
+		$filters = [];
+		if (!is_null($sinceTs)) {
+			$filters[] = 'filter[date_willexecute][gt]=' . $sinceTs;
+		}
+		if (!is_null($untilTs)) {
+			// date_willexecute is actually the date of the event, not the reminder one...
+			// so we make sure we get the max reminder popup_timer
+			$filters[] = 'filter[date_willexecute][lt]=' . ($untilTs + (60 * 60 * 24));
+		}
+		$result = $this->request(
+			$url, $accessToken, $userId, 'module/Reminders?' . implode('&filter[operator]=and&', $filters)
+		);
+		if (isset($result['error'])) {
+			return $result;
+		}
+		// get target date for calls and meetings
+		$tsNow = (new \DateTime())->getTimestamp();
+		$finalResults = [];
+		foreach ($result['data'] as $reminder) {
+			// apply time filter on real reminder date
+			$realReminderTs = (int) $reminder['attributes']['date_willexecute'] - (int) $reminder['attributes']['timer_popup'];
+			if (!is_null($sinceTs) && $realReminderTs < $sinceTs) {
+				continue;
+			}
+			if (!is_null($untilTs) && $realReminderTs > $untilTs) {
+				continue;
+			}
+			$reminder['real_reminder_timestamp'] = $realReminderTs;
+			// is it assigned to user?
+			// get related element
+			$module = $reminder['attributes']['related_event_module'];
+			$elemId = $reminder['attributes']['related_event_module_id'];
+			$elem = $this->request(
+				$url, $accessToken, $userId, 'module/' . $module . '/' . $elemId
+			);
+			if (!isset($elem['error'])
+				&& isset($elem['data'], $elem['data']['attributes'], $elem['data']['attributes']['assigned_user_id'])
+				&& $elem['data']['attributes']['assigned_user_id'] === $scrmUserId
+			) {
+				$reminder['title'] = $elem['data']['attributes']['name'];
+				$finalResults[] = $reminder;
+			}
+		}
+
+		$a = usort($finalResults, function($a, $b) {
+			$ta = $a['real_reminder_timestamp'];
+			$tb = $b['real_reminder_timestamp'];
+			return ($ta < $tb) ? -1 : 1;
+		});
+		if ($limit) {
+			$finalResults = array_slice($finalResults, 0, $limit);
+		}
+		$finalResults = array_values($finalResults);
+		return $finalResults;
+	}
+
+	/**
+	 * !!!! problem with alerts: they appear after the popup has been shown in UI so we don't see them if user didn't see them already...
 	 * Get user alerts that are
 	 * - assigned to the user
 	 * - for an event in the future
@@ -158,14 +242,14 @@ class SuiteCRMAPIService {
 			if (($isCall || $isMeeting) && count($recordMatch) > 1) {
 				$recordId = $recordMatch[1];
 				$module = $isCall ? 'Calls' : 'Meetings';
-				$elems = $this->request(
+				$elem = $this->request(
 					$url, $accessToken, $userId, 'module/' . $module . '/' . $recordId
 				);
-				if (!isset($elems['error']) && isset($elems['data']) && isset($elems['data']['attributes']['date_start'])
+				if (!isset($elem['error']) && isset($elem['data']) && isset($elem['data']['attributes']['date_start'])
 				) {
-					$tsElem = (new \DateTime($elems['data']['attributes']['date_start']))->getTimestamp();
+					$tsElem = (new \DateTime($elem['data']['attributes']['date_start']))->getTimestamp();
 					if ($tsElem > $tsNow) {
-						$alert['date_start'] = $elems['data']['attributes']['date_start'];
+						$alert['date_start'] = $elem['data']['attributes']['date_start'];
 						$alert['type'] = $isCall ? 'call' : 'meeting';
 
 						// get the related reminder

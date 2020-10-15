@@ -85,18 +85,24 @@ class Notifier implements INotifier {
 		$l = $this->factory->get('integration_suitecrm', $languageCode);
 
 		switch ($notification->getSubject()) {
-		case 'new_open_tickets':
+		case 'reminder':
 			$p = $notification->getSubjectParameters();
-			$nbOpen = (int) ($p['nbOpen'] ?? 0);
-			$content = $l->n('You have %s open ticket in SuiteCRM.', 'You have %s open tickets in SuiteCRM.', $nbOpen, [$nbOpen]);
+			$type = $p['type'];
+			$title = $p['title'];
+			$link = $p['link'] ?? '';
+			$date = new \DateTime();
+			$date->setTimestamp($p['event_timestamp']);
+			//$formattedDate = $date->format('Y-m-d H:i Z');
+			$formattedDate = $date->format('r');
 
-			//$theme = $this->config->getUserValue($userId, 'accessibility', 'theme', '');
-			//$iconUrl = ($theme === 'dark')
-			//	? $this->url->imagePath(Application::APP_ID, 'app.svg')
-			//	: $this->url->imagePath(Application::APP_ID, 'app-dark.svg');
+			if ($type === 'Calls') {
+				$content = $l->t('SuiteCRM call: %s, Time: %s', [$title, $formattedDate]);
+			} elseif ($type === 'Meetings') {
+				$content = $l->t('SuiteCRM meeting: %s, Time: %s', [$title, $formattedDate]);
+			}
 
 			$notification->setParsedSubject($content)
-				->setLink($p['link'] ?? '')
+				->setLink($link)
 				->setIcon($this->url->getAbsoluteURL($this->url->imagePath(Application::APP_ID, 'app-dark.svg')));
 				//->setIcon($this->url->getAbsoluteURL($iconUrl));
 			return $notification;

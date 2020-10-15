@@ -24,15 +24,17 @@ declare(strict_types=1);
 namespace OCA\SuiteCRM\BackgroundJob;
 
 use OCP\BackgroundJob\TimedJob;
-use OCA\SuiteCRM\SuiteCRMAPIService;
 use Psr\Log\LoggerInterface;
+use OCP\AppFramework\Utility\ITimeFactory;
+
+use OCA\SuiteCRM\Service\SuiteCRMAPIService;
 
 /**
- * Class CheckOpenTickets
+ * Class CheckAlerts
  *
  * @package OCA\SuiteCRM\BackgroundJob
  */
-class CheckOpenTickets extends TimedJob {
+class CheckAlerts extends TimedJob {
 
 	/** @var SuiteCRMAPIService */
 	protected $suitecrmAPIService;
@@ -40,8 +42,10 @@ class CheckOpenTickets extends TimedJob {
 	/** @var LoggerInterface */
 	protected $logger;
 
-	public function __construct(SuiteCRMAPIService $suitecrmAPIService,
+	public function __construct(ITimeFactory $time,
+								SuiteCRMAPIService $suitecrmAPIService,
 								LoggerInterface $logger) {
+		parent::__construct($time);
 		// Every 15 minutes
 		$this->setInterval(60 * 15);
 
@@ -50,7 +54,7 @@ class CheckOpenTickets extends TimedJob {
 	}
 
 	protected function run($argument): void {
-		$this->suitecrmAPIService->checkOpenTickets();
-		$this->logger->info('Checked if users have open SuiteCRM tickets.');
+		$this->suitecrmAPIService->checkAlerts();
+		$this->logger->info('Checked if users have SuiteCRM alerts.');
 	}
 }
