@@ -95,7 +95,7 @@ class ConfigController extends Controller {
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', '');
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'token', '');
 			$this->config->setUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'last_open_check', '');
+			$this->config->setUserValue($this->userId, Application::APP_ID, 'last_reminder_check', '');
 			$result = [
 				'user_name' => '',
 			];

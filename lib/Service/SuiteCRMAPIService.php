@@ -67,45 +67,21 @@ class SuiteCRMAPIService {
 	private function checkOpenTicketsForUser(string $userId): void {
 		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, 'token', '');
 		if ($accessToken) {
-			$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token', '');
-			$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-			$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
 			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
-			if ($clientID && $clientSecret && $suitecrmUrl) {
-				$lastNotificationCheck = $this->config->getUserValue($userId, Application::APP_ID, 'last_open_check', '');
-				$lastNotificationCheck = $lastNotificationCheck === '' ? null : $lastNotificationCheck;
-				// get the suitecrm user ID
-				$me = $this->request(
-					$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, 'users/me'
-				);
-				if (isset($me['id'])) {
-					$my_user_id = $me['id'];
+			$lastReminderCheck = (int) $this->config->getUserValue($userId, Application::APP_ID, 'last_reminder_check', '0');
 
-					$notifications = $this->getNotifications(
-						$suitecrmUrl, $accessToken, $refreshToken, $clientID, $clientSecret, $userId, $lastNotificationCheck
-					);
-					if (!isset($notifications['error']) && count($notifications) > 0) {
-						$lastNotificationCheck = $notifications[0]['updated_at'];
-						$this->config->setUserValue($userId, Application::APP_ID, 'last_open_check', $lastNotificationCheck);
-						$nbOpen = 0;
-						foreach ($notifications as $n) {
-							$user_id = $n['user_id'];
-							$state_id = $n['state_id'];
-							$owner_id = $n['owner_id'];
-							// if ($state_id === 1) {
-							if ($owner_id === $my_user_id && $state_id === 1) {
-								$nbOpen++;
-							}
-						}
-						error_log('NB OPEN for '.$me['lastname'].': '.$nbOpen);
-						if ($nbOpen > 0) {
-							$this->sendNCNotification($userId, 'new_open_tickets', [
-								'nbOpen' => $nbOpen,
-								'link' => $suitecrmUrl
-							]);
-						}
-					}
+			$alerts = $this->getAlerts($suitecrmUrl, $accessToken, $userId, $lastReminderCheck);
+			if (!isset($alerts['error']) && count($alerts) > 0) {
+				foreach ($alerts as $alert) {
+					$lastReminderCheck = $alert['date_willexecute'];
+					$this->sendNCNotification($userId, 'reminder', [
+						'type' => $alert['type'],
+						'title' => $alert['attributes']['name'],
+						'date_start' => $alert['date_start'],
+					]);
 				}
+				// update last check date
+				$this->config->setUserValue($userId, Application::APP_ID, 'last_reminder_check', $lastReminderCheck);
 			}
 		}
 	}
@@ -139,23 +115,26 @@ class SuiteCRMAPIService {
 	 */
 	public function getNotifications(string $url, string $accessToken, string $userId,
 									?string $since = null, ?int $limit = null): array {
+		// TODO here we should get upcoming planned calls and meetings (not alerts)
 		return $this->getAlerts($url, $accessToken, $userId, $since);
 	}
 
 	/**
-	 * get user alerts that are
-	 * - in the future
+	 * Get user alerts that are
+	 * - assigned to the user
+	 * - for an event in the future
 	 * - not already read
-	 * - after since (if defined)
+	 * - reminder set after $since (if defined)
+	 * Alerts are created once the reminder execution date is reached
 	 *
 	 * @param string $url
 	 * @param string $accessToken
 	 * @param string $userId
-	 * @param ?string $since
+	 * @param ?int $sinceTs
 	 * @param ?int $limit
 	 * @return array
 	 */
-	public function getAlerts(string $url, string $accessToken, string $userId, ?string $since = null, ?int $limit = null): array {
+	public function getAlerts(string $url, string $accessToken, string $userId, ?int $sinceTs = null, ?int $limit = null): array {
 		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
 		$filters = [
 			urlencode('filter[assigned_user_id][eq]') . '=' . urlencode($scrmUserId),
@@ -169,7 +148,7 @@ class SuiteCRMAPIService {
 		}
 		// get target date for calls and meetings
 		$tsNow = (new \DateTime())->getTimestamp();
-		$futureAlerts = [];
+		$finalAlerts = [];
 		foreach ($result['data'] as $alert) {
 			$urlRedirect = $alert['attributes']['url_redirect'];
 			$isCall = preg_match('/module=Calls/', $urlRedirect);
@@ -188,35 +167,39 @@ class SuiteCRMAPIService {
 					if ($tsElem > $tsNow) {
 						$alert['date_start'] = $elems['data']['attributes']['date_start'];
 						$alert['type'] = $isCall ? 'call' : 'meeting';
-						$futureAlerts[] = $alert;
+
+						// get the related reminder
+						$reminder = $this->request(
+							$url, $accessToken, $userId, 'module/Reminders/' . $alert['attributes']['reminder_id']
+						);
+						if (isset($reminder['data'], $reminder['data']['attributes'], $reminder['data']['attributes']['date_willexecute'])) {
+							$dateWillExecute = $reminder['data']['attributes']['date_willexecute'];
+							$alert['date_willexecute'] = (int) $dateWillExecute;
+							// finally add the alert
+							$finalAlerts[] = $alert;
+						}
 					}
 				}
 			}
 		}
-		// filter results by date
-		if (!is_null($since)) {
-			$sinceDate = new \DateTime($since);
-			$sinceTimestamp = $sinceDate->getTimestamp();
-			$futureAlerts = array_filter($futureAlerts, function($elem) use ($sinceTimestamp) {
-				$date = new \DateTime($elem['date_start']);
-				$ts = $date->getTimestamp();
-				return $ts > $sinceTimestamp;
+		// filter by reminder execution date
+		if (!is_null($sinceTs)) {
+			$finalAlerts = array_filter($finalAlerts, function($elem) use ($sinceTs) {
+				return $elem['date_willexecute'] > $sinceTs;
 			});
 		}
-		// sort by date
-		$a = usort($futureAlerts, function($a, $b) {
-			$a = new \Datetime($a['date_start']);
-			$ta = $a->getTimestamp();
-			$b = new \Datetime($b['date_start']);
-			$tb = $b->getTimestamp();
+		// sort by reminder execution date
+		$a = usort($finalAlerts, function($a, $b) {
+			$ta = $a['date_willexecute'];
+			$tb = $b['date_willexecute'];
 			return ($ta < $tb) ? -1 : 1;
 		});
 		if ($limit) {
-			$futureAlerts = array_slice($futureAlerts, 0, $limit);
+			$finalAlerts = array_slice($finalAlerts, 0, $limit);
 		}
-		$futureAlerts = array_values($futureAlerts);
+		$finalAlerts = array_values($finalAlerts);
 
-		return $futureAlerts;
+		return $finalAlerts;
 	}
 
 	/**
