@@ -66,7 +66,7 @@
 					class="checkbox"
 					:checked="state.search_enabled"
 					@input="onSearchChange">
-				<label for="search-suitecrm">{{ t('integration_suitecrm', 'Enable unified search for tickets') }}</label>
+				<label for="search-suitecrm">{{ t('integration_suitecrm', 'Enable unified search for contacts, accounts, leads, opportunities and cases') }}</label>
 				<br><br>
 				<p v-if="state.search_enabled" class="settings-hint">
 					<span class="icon icon-details" />
@@ -78,7 +78,7 @@
 					class="checkbox"
 					:checked="state.notification_enabled"
 					@input="onNotificationChange">
-				<label for="notification-suitecrm">{{ t('integration_suitecrm', 'Enable notifications for open tickets') }}</label>
+				<label for="notification-suitecrm">{{ t('integration_suitecrm', 'Enable notifications for reminders on calls and meetings') }}</label>
 			</div>
 		</div>
 	</div>

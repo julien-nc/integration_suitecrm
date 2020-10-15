@@ -18,6 +18,7 @@ use OCP\L10N\IFactory;
 use OCP\Notification\IManager as INotificationManager;
 use OCP\Notification\INotification;
 use OCP\Notification\INotifier;
+use OCP\IDateTimeFormatter;
 use OCA\SuiteCRM\AppInfo\Application;
 
 class Notifier implements INotifier {
@@ -43,11 +44,13 @@ class Notifier implements INotifier {
 	public function __construct(IFactory $factory,
 								IUserManager $userManager,
 								INotificationManager $notificationManager,
+								IDateTimeFormatter $dateFormatter,
 								IURLGenerator $urlGenerator) {
 		$this->factory = $factory;
 		$this->userManager = $userManager;
 		$this->notificationManager = $notificationManager;
 		$this->url = $urlGenerator;
+		$this->dateFormatter = $dateFormatter;
 	}
 
 	/**
@@ -90,15 +93,12 @@ class Notifier implements INotifier {
 			$type = $p['type'];
 			$title = $p['title'];
 			$link = $p['link'] ?? '';
-			$date = new \DateTime();
-			$date->setTimestamp($p['event_timestamp']);
-			//$formattedDate = $date->format('Y-m-d H:i Z');
-			$formattedDate = $date->format('r');
+			$formattedDate = $this->dateFormatter->formatDateTime($p['event_timestamp']);
 
 			if ($type === 'Calls') {
-				$content = $l->t('SuiteCRM call: %s, Time: %s', [$title, $formattedDate]);
+				$content = $l->t('SuiteCRM call: %s, %s', [$title, $formattedDate]);
 			} elseif ($type === 'Meetings') {
-				$content = $l->t('SuiteCRM meeting: %s, Time: %s', [$title, $formattedDate]);
+				$content = $l->t('SuiteCRM meeting: %s, %s', [$title, $formattedDate]);
 			}
 
 			$notification->setParsedSubject($content)

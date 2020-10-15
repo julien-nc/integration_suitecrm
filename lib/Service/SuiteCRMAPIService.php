@@ -78,10 +78,14 @@ class SuiteCRMAPIService {
 			}
 
 			$tsNow = (new \DateTime())->getTimestamp();
+			//error_log('notif limits: '.$lastReminderCheck.' -> '.$tsNow);
 			$reminders = $this->getReminders($suitecrmUrl, $accessToken, $userId, $lastReminderCheck, $tsNow);
 			if (!isset($reminders['error']) && count($reminders) > 0) {
 				foreach ($reminders as $reminder) {
-					$lastReminderCheck = $reminder['real_reminder_timestamp'];
+					// error_log('reminder found: '.$reminder['title']);
+					if ($reminder['real_reminder_timestamp'] > $lastReminderCheck) {
+						$lastReminderCheck = $reminder['real_reminder_timestamp'];
+					}
 					$module = $reminder['attributes']['related_event_module'];
 					$elemId = $reminder['attributes']['related_event_module_id'];
 					$this->sendNCNotification($userId, 'reminder', [
@@ -162,10 +166,10 @@ class SuiteCRMAPIService {
 		foreach ($result['data'] as $reminder) {
 			// apply time filter on real reminder date
 			$realReminderTs = (int) $reminder['attributes']['date_willexecute'] - (int) $reminder['attributes']['timer_popup'];
-			if (!is_null($reminderSinceTs) && $realReminderTs < $reminderSinceTs) {
+			if (!is_null($reminderSinceTs) && $realReminderTs <= $reminderSinceTs) {
 				continue;
 			}
-			if (!is_null($reminderUntilTs) && $realReminderTs > $reminderUntilTs) {
+			if (!is_null($reminderUntilTs) && $realReminderTs >= $reminderUntilTs) {
 				continue;
 			}
 			$reminder['real_reminder_timestamp'] = $realReminderTs;
