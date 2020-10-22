@@ -5,7 +5,7 @@
 	<summary>Integration of SuiteCRM Customer Relationship Management application</summary>
 	<description><![CDATA[SuiteCRM integration provides a dashboard widget displaying your important notifications,
 	a search provider for content and notifications for activity in SuiteCRM.]]></description>
-	<version>0.0.1</version>
+	<version>0.0.2</version>
 	<licence>agpl</licence>
 	<author>Julien Veyssier</author>
 	<namespace>SuiteCRM</namespace>

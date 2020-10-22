@@ -6,6 +6,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## 0.0.1 – 2020-10-22
+## 0.0.2 – 2020-10-22
 ### Added
 * the app
