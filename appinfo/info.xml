@@ -10,13 +10,13 @@
 	<author>Julien Veyssier</author>
 	<namespace>SuiteCRM</namespace>
 	<documentation>
-		<developer>https://github.com/nextcloud/integration_suitecrm</developer>
+		<developer>https://github.com/eneiluj/integration_suitecrm</developer>
 	</documentation>
 	<category>integration</category>
 	<category>dashboard</category>
-	<website>https://github.com/nextcloud/integration_suitecrm</website>
-	<bugs>https://github.com/nextcloud/integration_suitecrm/issues</bugs>
-	<screenshot>https://github.com/nextcloud/integration_suitecrm/raw/master/img/screenshot1.jpg</screenshot>
+	<website>https://github.com/eneiluj/integration_suitecrm</website>
+	<bugs>https://github.com/eneiluj/integration_suitecrm/issues</bugs>
+	<screenshot>https://github.com/eneiluj/integration_suitecrm/raw/master/img/screenshot1.jpg</screenshot>
 	<dependencies>
 		<database min-version="9.4">pgsql</database>
 		<database>sqlite</database>
