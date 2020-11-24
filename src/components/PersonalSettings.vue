@@ -1,13 +1,16 @@
 <template>
-	<div v-if="oAuthConfigured" id="suitecrm_prefs" class="section">
+	<div id="suitecrm_prefs" class="section">
 		<h2>
 			<a class="icon icon-suitecrm" />
 			{{ t('integration_suitecrm', 'SuiteCRM integration') }}
 		</h2>
-		<p v-if="!connected" class="settings-hint">
-			{{ t('integration_suitecrm', 'Your login and password are not stored. They are just used once to get an access token which will be used to interact with your account.') }}
+		<p v-if="!oAuthConfigured" class="settings-hint">
+			{{ t('integration_suitecrm', 'No SuiteCRM OAuth app configured. Ask your Nextcloud administrator to configure SuiteCRM connected accounts admin section.') }}
 		</p>
-		<div id="suitecrm-content">
+		<div v-else id="suitecrm-content">
+			<p v-if="!connected" class="settings-hint">
+				{{ t('integration_suitecrm', 'Your login and password are not stored. They are just used once to get an access token which will be used to interact with your account.') }}
+			</p>
 			<div class="suitecrm-grid-form">
 				<label for="suitecrm-url">
 					<a class="icon icon-link" />
@@ -201,34 +204,44 @@ export default {
 </script>
 
 <style scoped lang="scss">
-#suitecrm-search-block {
-	margin-top: 30px;
-}
-
-.suitecrm-grid-form label {
-	line-height: 38px;
-}
-
-.suitecrm-grid-form input {
-	width: 100%;
-}
-
-.suitecrm-grid-form {
-	max-width: 600px;
-	display: grid;
-	grid-template: 1fr / 1fr 1fr;
-	button .icon {
-		margin-bottom: -1px;
+#suitecrm_prefs {
+	> .settings-hint {
+		margin-left: 40px;
 	}
-}
 
-#suitecrm_prefs .icon {
-	display: inline-block;
-	width: 32px;
-}
+	#suitecrm-content {
+		margin-left: 40px;
+	}
 
-#suitecrm_prefs .grid-form .icon {
-	margin-bottom: -3px;
+	#suitecrm-search-block {
+		margin-top: 30px;
+		.icon {
+			width: 22px;
+		}
+	}
+
+	.icon {
+		display: inline-block;
+		width: 32px;
+	}
+
+	.suitecrm-grid-form {
+		max-width: 600px;
+		display: grid;
+		grid-template: 1fr / 1fr 1fr;
+		.icon {
+			margin-bottom: -3px;
+		}
+		button .icon {
+			margin-bottom: -1px;
+		}
+		label {
+			line-height: 38px;
+		}
+		input {
+			width: 100%;
+		}
+	}
 }
 
 .icon-suitecrm {
@@ -241,13 +254,4 @@ export default {
 body.theme--dark .icon-suitecrm {
 	background-image: url(./../../img/app.svg);
 }
-
-#suitecrm-content {
-	margin-left: 40px;
-}
-
-#suitecrm-search-block .icon {
-	width: 22px;
-}
-
 </style>
