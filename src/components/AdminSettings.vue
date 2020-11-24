@@ -9,7 +9,10 @@
 			<br><br>
 			<span class="icon icon-details" />
 			{{ t('integration_suitecrm', 'Make sure you created private and public keys for your SuiteCRM instance. Authentication won\'t work if those keys are missing.') }}
-			<a href="https://docs.suitecrm.com/developer/api/developer-setup-guide/json-api/#_generate_private_and_public_key_for_oauth2" target="_blank" class="external">{{ t('integration_suitecrm', 'SuiteCRM OAuth2 documentation') }}</a>
+			<a href="https://docs.suitecrm.com/developer/api/developer-setup-guide/json-api/#_generate_private_and_public_key_for_oauth2" target="_blank" class="external">
+				<span class="icon icon-external" />
+				{{ t('integration_suitecrm', 'SuiteCRM OAuth2 documentation') }}
+			</a>
 		</p>
 		<div class="grid-form">
 			<label for="suitecrm-oauth-instance">
@@ -110,39 +113,42 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.grid-form label {
-	line-height: 38px;
-}
+#suitecrm_prefs {
+	.icon {
+		display: inline-block;
+		width: 32px;
+	}
 
-.grid-form input {
-	width: 100%;
-}
+	.icon-external {
+		width: 15px;
+		margin-bottom: -3px;
+	}
 
-.grid-form {
-	max-width: 500px;
-	display: grid;
-	grid-template: 1fr / 1fr 1fr;
-	margin-left: 30px;
-}
+	.grid-form {
+		max-width: 500px;
+		display: grid;
+		grid-template: 1fr / 1fr 1fr;
+		margin-left: 30px;
+		label {
+			line-height: 38px;
+		}
+		input {
+			width: 100%;
+		}
+		.icon {
+			margin-bottom: -3px;
+		}
+	}
 
-#suitecrm_prefs .icon {
-	display: inline-block;
-	width: 32px;
-}
-
-#suitecrm_prefs .grid-form .icon {
-	margin-bottom: -3px;
-}
-
-.icon-suitecrm {
-	background-image: url(./../../img/app-dark.svg);
-	background-size: 23px 23px;
-	height: 23px;
-	margin-bottom: -4px;
+	.icon-suitecrm {
+		background-image: url(./../../img/app-dark.svg);
+		background-size: 23px 23px;
+		height: 23px;
+		margin-bottom: -4px;
+	}
 }
 
 body.theme--dark .icon-suitecrm {
 	background-image: url(./../../img/app.svg);
 }
-
 </style>
