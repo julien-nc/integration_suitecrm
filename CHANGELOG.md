@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 0.0.3 – 2020-11-24
+### Changed
+- new hint in perso settings when admin settings are not set
+- bump js libs
+
+### Fixed
+- occ check-code warning
+
 ## 0.0.2 – 2020-10-22
 ### Added
 * the app
