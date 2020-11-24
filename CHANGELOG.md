@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## 0.0.3 – 2020-11-24
+## 0.0.4 – 2020-11-24
 ### Changed
 - new hint in perso settings when admin settings are not set
 - bump js libs
