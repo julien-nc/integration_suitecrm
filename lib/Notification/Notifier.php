@@ -12,6 +12,7 @@
 namespace OCA\SuiteCRM\Notification;
 
 
+use InvalidArgumentException;
 use OCP\IURLGenerator;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
@@ -34,11 +35,16 @@ class Notifier implements INotifier {
 
 	/** @var IURLGenerator */
 	protected $url;
+	/**
+	 * @var IDateTimeFormatter
+	 */
+	private $dateFormatter;
 
 	/**
 	 * @param IFactory $factory
 	 * @param IUserManager $userManager
 	 * @param INotificationManager $notificationManager
+	 * @param IDateTimeFormatter $dateFormatter
 	 * @param IURLGenerator $urlGenerator
 	 */
 	public function __construct(IFactory $factory,
@@ -69,20 +75,20 @@ class Notifier implements INotifier {
 	 * @since 17.0.0
 	 */
 	public function getName(): string {
-		return $this->lFactory->get('integration_suitecrm')->t('SuiteCRM');
+		return $this->factory->get('integration_suitecrm')->t('SuiteCRM');
 	}
 
 	/**
 	 * @param INotification $notification
 	 * @param string $languageCode The code of the language that should be used to prepare the notification
 	 * @return INotification
-	 * @throws \InvalidArgumentException When the notification was not prepared by a notifier
+	 * @throws InvalidArgumentException When the notification was not prepared by a notifier
 	 * @since 9.0.0
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== 'integration_suitecrm') {
 			// Not my app => throw
-			throw new \InvalidArgumentException();
+			throw new InvalidArgumentException();
 		}
 
 		$l = $this->factory->get('integration_suitecrm', $languageCode);
@@ -95,6 +101,7 @@ class Notifier implements INotifier {
 			$link = $p['link'] ?? '';
 			$formattedDate = $this->dateFormatter->formatDateTime($p['event_timestamp']);
 
+			$content = '';
 			if ($type === 'Calls') {
 				$content = $l->t('SuiteCRM call: %s, %s', [$title, $formattedDate]);
 			} elseif ($type === 'Meetings') {
@@ -109,7 +116,7 @@ class Notifier implements INotifier {
 
 		default:
 			// Unknown subject => Unknown notification => throw
-			throw new \InvalidArgumentException();
+			throw new InvalidArgumentException();
 		}
 	}
 }

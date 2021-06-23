@@ -9,16 +9,12 @@
 
 namespace OCA\SuiteCRM\AppInfo;
 
-use OCP\IContainer;
-
 use OCP\AppFramework\App;
-use OCP\AppFramework\IAppContainer;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\Notification\IManager as INotificationManager;
 
-use OCA\SuiteCRM\Controller\PageController;
 use OCA\SuiteCRM\Dashboard\SuiteCRMWidget;
 use OCA\SuiteCRM\Search\SuiteCRMSearchProvider;
 use OCA\SuiteCRM\Notification\Notifier;
@@ -41,7 +37,7 @@ class Application extends App implements IBootstrap {
 		parent::__construct(self::APP_ID, $urlParams);
 
 		$container = $this->getContainer();
-		$manager = $container->query(INotificationManager::class);
+		$manager = $container->get(INotificationManager::class);
 		$manager->registerNotifierService(Notifier::class);
 	}
 

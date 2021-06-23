@@ -45,12 +45,21 @@ class SuiteCRMSearchProvider implements IProvider {
 
 	/** @var IURLGenerator */
 	private $urlGenerator;
+	/**
+	 * @var IConfig
+	 */
+	private $config;
+	/**
+	 * @var SuiteCRMAPIService
+	 */
+	private $service;
 
 	/**
 	 * CospendSearchProvider constructor.
 	 *
 	 * @param IAppManager $appManager
 	 * @param IL10N $l10n
+	 * @param IConfig $config
 	 * @param IURLGenerator $urlGenerator
 	 * @param SuiteCRMAPIService $service
 	 */
@@ -105,11 +114,11 @@ class SuiteCRMSearchProvider implements IProvider {
 		$offset = $query->getCursor();
 		$offset = $offset ? intval($offset) : 0;
 
-		$theme = $this->config->getUserValue($user->getUID(), 'accessibility', 'theme', '');
+//		$theme = $this->config->getUserValue($user->getUID(), 'accessibility', 'theme', '');
 		$thumbnailUrl = $this->urlGenerator->imagePath(Application::APP_ID, 'app-color.svg');
 
-		$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
-		$accessToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'token', '');
+		$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url');
+		$accessToken = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'token');
 
 		$searchEnabled = $this->config->getUserValue($user->getUID(), Application::APP_ID, 'search_enabled', '0') === '1';
 		if ($accessToken === '' || !$searchEnabled) {
@@ -122,7 +131,7 @@ class SuiteCRMSearchProvider implements IProvider {
 			return SearchResult::paginated($this->getName(), [], 0);
 		}
 
-		$formattedResults = \array_map(function (array $entry) use ($thumbnailUrl, $suitecrmUrl): SuiteCRMSearchResultEntry {
+		$formattedResults = array_map(function (array $entry) use ($thumbnailUrl, $suitecrmUrl): SuiteCRMSearchResultEntry {
 			return new SuiteCRMSearchResultEntry(
 				$this->getThumbnailUrl($entry, $thumbnailUrl),
 				$this->getMainText($entry),
@@ -156,6 +165,7 @@ class SuiteCRMSearchProvider implements IProvider {
 		} elseif ($entry['type'] === 'case') {
 			return $entry['attributes']['name'];
 		}
+		return '';
 	}
 
 	/**
@@ -175,11 +185,12 @@ class SuiteCRMSearchProvider implements IProvider {
 		} elseif ($entry['type'] === 'case') {
 			return '📁 ' . $this->l10n->t('Case');
 		}
+		return '';
 	}
 
 	/**
 	 * @param array $entry
-	 * @param array $url
+	 * @param string $url
 	 * @return string
 	 */
 	protected function getLinkToSuiteCRM(array $entry, string $url): string {
@@ -194,6 +205,7 @@ class SuiteCRMSearchProvider implements IProvider {
 		} elseif ($entry['type'] === 'case') {
 			return $url . '/index.php?module=Cases&action=DetailView&record=' . $entry['id'];
 		}
+		return '';
 	}
 
 	/**

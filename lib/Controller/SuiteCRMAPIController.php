@@ -11,21 +11,8 @@
 
 namespace OCA\SuiteCRM\Controller;
 
-use OCP\App\IAppManager;
-use OCP\Files\IAppData;
 use OCP\AppFramework\Http\DataDisplayResponse;
-
-use OCP\IURLGenerator;
 use OCP\IConfig;
-use OCP\IServerContainer;
-use OCP\IL10N;
-
-use OCP\AppFramework\Http;
-use OCP\AppFramework\Http\RedirectResponse;
-
-use OCP\AppFramework\Http\ContentSecurityPolicy;
-
-use Psr\Log\LoggerInterface;
 use OCP\IRequest;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Controller;
@@ -35,35 +22,53 @@ use OCA\SuiteCRM\AppInfo\Application;
 
 class SuiteCRMAPIController extends Controller {
 
-
-	private $userId;
+	/**
+	 * @var IConfig
+	 */
 	private $config;
-	private $dbconnection;
-	private $dbtype;
+	/**
+	 * @var SuiteCRMAPIService
+	 */
+	private $suitecrmAPIService;
+	/**
+	 * @var string|null
+	 */
+	private $userId;
+	/**
+	 * @var string
+	 */
+	private $accessToken;
+	/**
+	 * @var string
+	 */
+	private $refreshToken;
+	/**
+	 * @var string
+	 */
+	private $clientID;
+	/**
+	 * @var string
+	 */
+	private $clientSecret;
+	/**
+	 * @var string
+	 */
+	private $suitecrmUrl;
 
-	public function __construct($AppName,
+	public function __construct(string $appName,
 								IRequest $request,
-								IServerContainer $serverContainer,
 								IConfig $config,
-								IL10N $l10n,
-								IAppManager $appManager,
-								IAppData $appData,
-								LoggerInterface $logger,
 								SuiteCRMAPIService $suitecrmAPIService,
-								$userId) {
-		parent::__construct($AppName, $request);
-		$this->userId = $userId;
-		$this->l10n = $l10n;
-		$this->appData = $appData;
-		$this->serverContainer = $serverContainer;
+								?string $userId) {
+		parent::__construct($appName, $request);
 		$this->config = $config;
-		$this->logger = $logger;
 		$this->suitecrmAPIService = $suitecrmAPIService;
-		$this->accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token', '');
-		$this->refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token', '');
-		$this->clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-		$this->clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
-		$this->suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
+		$this->userId = $userId;
+		$this->accessToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'token');
+		$this->refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'refresh_token');
+		$this->clientID = $this->config->getAppValue(Application::APP_ID, 'client_id');
+		$this->clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret');
+		$this->suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url');
 	}
 
 	/**
@@ -81,7 +86,7 @@ class SuiteCRMAPIController extends Controller {
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 *
-	 * @param string $image
+	 * @param string $suiteUserId
 	 * @return DataDisplayResponse
 	 */
 	public function getSuiteCRMAvatar(string $suiteUserId = ''): DataDisplayResponse {
@@ -98,7 +103,8 @@ class SuiteCRMAPIController extends Controller {
 	 * get reminder list for future events
 	 * @NoAdminRequired
 	 *
-	 * @param ?int $since
+	 * @param int|null $eventSinceTimestamp
+	 * @param int|null $limit
 	 * @return DataResponse
 	 */
 	public function getReminders(int $eventSinceTimestamp = null, ?int $limit = null): DataResponse {

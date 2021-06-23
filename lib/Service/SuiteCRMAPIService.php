@@ -11,6 +11,9 @@
 
 namespace OCA\SuiteCRM\Service;
 
+use DateInterval;
+use DateTime;
+use Exception;
 use OCP\IL10N;
 use Psr\Log\LoggerInterface;
 use OCP\IConfig;
@@ -24,26 +27,50 @@ use GuzzleHttp\Exception\ServerException;
 use OCA\SuiteCRM\AppInfo\Application;
 
 class SuiteCRMAPIService {
-
-	private $l10n;
+	/**
+	 * @var string
+	 */
+	private $appName;
+	/**
+	 * @var IUserManager
+	 */
+	private $userManager;
+	/**
+	 * @var LoggerInterface
+	 */
 	private $logger;
+	/**
+	 * @var IL10N
+	 */
+	private $l10n;
+	/**
+	 * @var IConfig
+	 */
+	private $config;
+	/**
+	 * @var INotificationManager
+	 */
+	private $notificationManager;
+	/**
+	 * @var \OCP\Http\Client\IClient
+	 */
+	private $client;
 
 	/**
 	 * Service to make requests to SuiteCRM v3 (JSON) API
 	 */
-	public function __construct (IUserManager $userManager,
-								string $appName,
+	public function __construct (string $appName,
+								IUserManager $userManager,
 								LoggerInterface $logger,
 								IL10N $l10n,
 								IConfig $config,
 								INotificationManager $notificationManager,
 								IClientService $clientService) {
 		$this->appName = $appName;
-		$this->l10n = $l10n;
-		$this->logger = $logger;
-		$this->config = $config;
 		$this->userManager = $userManager;
-		$this->clientService = $clientService;
+		$this->logger = $logger;
+		$this->l10n = $l10n;
+		$this->config = $config;
 		$this->notificationManager = $notificationManager;
 		$this->client = $clientService->newClient();
 	}
@@ -65,19 +92,19 @@ class SuiteCRMAPIService {
 	 * @return void
 	 */
 	private function checkAlertsForUser(string $userId): void {
-		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, 'token', '');
+		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, 'token');
 		$notificationEnabled = ($this->config->getUserValue($userId, Application::APP_ID, 'notification_enabled', '0') === '1');
 		if ($accessToken && $notificationEnabled) {
-			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url', '');
+			$suitecrmUrl = $this->config->getAppValue(Application::APP_ID, 'oauth_instance_url');
 			$lastReminderCheck = (int) $this->config->getUserValue($userId, Application::APP_ID, 'last_reminder_check', '0');
 			if ($lastReminderCheck === 0) {
 				// back one week
-				$d = new \DateTime();
-				$d->sub(new \DateInterval('P1W'));
+				$d = new DateTime();
+				$d->sub(new DateInterval('P1W'));
 				$lastReminderCheck = $d->getTimestamp();
 			}
 
-			$tsNow = (new \DateTime())->getTimestamp();
+			$tsNow = (new DateTime())->getTimestamp();
 			//error_log('notif limits: '.$lastReminderCheck.' -> '.$tsNow);
 			$reminders = $this->getReminders($suitecrmUrl, $accessToken, $userId, $lastReminderCheck, $tsNow);
 			if (!isset($reminders['error']) && count($reminders) > 0) {
@@ -104,7 +131,7 @@ class SuiteCRMAPIService {
 	/**
 	 * @param string $userId
 	 * @param string $subject
-	 * @param string $params
+	 * @param array $params
 	 * @return void
 	 */
 	private function sendNCNotification(string $userId, string $subject, array $params): void {
@@ -113,7 +140,7 @@ class SuiteCRMAPIService {
 
 		$notification->setApp(Application::APP_ID)
 			->setUser($userId)
-			->setDateTime(new \DateTime())
+			->setDateTime(new DateTime())
 			->setObject('dum', 'dum')
 			->setSubject($subject, $params);
 
@@ -130,7 +157,10 @@ class SuiteCRMAPIService {
 	 * @param string $url
 	 * @param string $accessToken
 	 * @param string $userId
-	 * @param ?int $sinceTs
+	 * @param int|null $reminderSinceTs
+	 * @param int|null $reminderUntilTs
+	 * @param int|null $eventSinceTs
+	 * @param int|null $eventUntilTs
 	 * @param ?int $limit
 	 * @return array
 	 */
@@ -138,7 +168,7 @@ class SuiteCRMAPIService {
 								?int $reminderSinceTs = null, ?int $reminderUntilTs = null,
 								?int $eventSinceTs = null, ?int $eventUntilTs = null,
 								?int $limit = null): array {
-		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
+		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
 		$filters = [];
 		if (!is_null($reminderSinceTs)) {
 			$filters[] = 'filter[date_willexecute][gt]=' . $reminderSinceTs;
@@ -161,7 +191,7 @@ class SuiteCRMAPIService {
 			return $result;
 		}
 		// get target date for calls and meetings
-		$tsNow = (new \DateTime())->getTimestamp();
+//		$tsNow = (new DateTime())->getTimestamp();
 		$finalResults = [];
 		foreach ($result['data'] as $reminder) {
 			// apply time filter on real reminder date
@@ -189,7 +219,7 @@ class SuiteCRMAPIService {
 			}
 		}
 
-		$a = usort($finalResults, function($a, $b) {
+		usort($finalResults, function($a, $b) {
 			$ta = $a['real_reminder_timestamp'];
 			$tb = $b['real_reminder_timestamp'];
 			return ($ta < $tb) ? -1 : 1;
@@ -197,8 +227,7 @@ class SuiteCRMAPIService {
 		if ($limit) {
 			$finalResults = array_slice($finalResults, 0, $limit);
 		}
-		$finalResults = array_values($finalResults);
-		return $finalResults;
+		return array_values($finalResults);
 	}
 
 	/**
@@ -218,7 +247,7 @@ class SuiteCRMAPIService {
 	 * @return array
 	 */
 	public function getAlerts(string $url, string $accessToken, string $userId, ?int $sinceTs = null, ?int $limit = null): array {
-		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id', '');
+		$scrmUserId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
 		$filters = [
 			urlencode('filter[assigned_user_id][eq]') . '=' . urlencode($scrmUserId),
 			urlencode('filter[is_read][eq]') . '=0',
@@ -230,7 +259,7 @@ class SuiteCRMAPIService {
 			return $result;
 		}
 		// get target date for calls and meetings
-		$tsNow = (new \DateTime())->getTimestamp();
+		$tsNow = (new DateTime())->getTimestamp();
 		$finalAlerts = [];
 		foreach ($result['data'] as $alert) {
 			$urlRedirect = $alert['attributes']['url_redirect'];
@@ -246,7 +275,7 @@ class SuiteCRMAPIService {
 				);
 				if (!isset($elem['error']) && isset($elem['data']) && isset($elem['data']['attributes']['date_start'])
 				) {
-					$tsElem = (new \DateTime($elem['data']['attributes']['date_start']))->getTimestamp();
+					$tsElem = (new DateTime($elem['data']['attributes']['date_start']))->getTimestamp();
 					if ($tsElem > $tsNow) {
 						$alert['date_start'] = $elem['data']['attributes']['date_start'];
 						$alert['type'] = $isCall ? 'call' : 'meeting';
@@ -272,7 +301,7 @@ class SuiteCRMAPIService {
 			});
 		}
 		// sort by reminder execution date
-		$a = usort($finalAlerts, function($a, $b) {
+		usort($finalAlerts, function($a, $b) {
 			$ta = $a['date_willexecute'];
 			$tb = $b['date_willexecute'];
 			return ($ta < $tb) ? -1 : 1;
@@ -280,9 +309,7 @@ class SuiteCRMAPIService {
 		if ($limit) {
 			$finalAlerts = array_slice($finalAlerts, 0, $limit);
 		}
-		$finalAlerts = array_values($finalAlerts);
-
-		return $finalAlerts;
+		return array_values($finalAlerts);
 	}
 
 	/**
@@ -452,6 +479,8 @@ class SuiteCRMAPIService {
 				$response = $this->client->put($url, $options);
 			} else if ($method === 'DELETE') {
 				$response = $this->client->delete($url, $options);
+			} else {
+				return ['error' => $this->l10n->t('Bad HTTP method')];
 			}
 			$body = $response->getBody();
 			$respCode = $response->getStatusCode();
@@ -463,13 +492,13 @@ class SuiteCRMAPIService {
 			}
 		} catch (ServerException | ClientException $e) {
 			$response = $e->getResponse();
-			$body = (string) $response->getBody();
+//			$body = (string) $response->getBody();
 			// try to refresh token if it's invalid
 			if ($response->getStatusCode() === 401) {
 				$this->logger->info('Trying to REFRESH the access token', ['app' => $this->appName]);
-				$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token', '');
-				$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id', '');
-				$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret', '');
+				$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, 'refresh_token');
+				$clientID = $this->config->getAppValue(Application::APP_ID, 'client_id');
+				$clientSecret = $this->config->getAppValue(Application::APP_ID, 'client_secret');
 				// try to refresh the token
 				$result = $this->requestOAuthAccessToken($suitecrmUrl, [
 					'client_id' => $clientID,
@@ -525,6 +554,8 @@ class SuiteCRMAPIService {
 				$response = $this->client->put($url, $options);
 			} else if ($method === 'DELETE') {
 				$response = $this->client->delete($url, $options);
+			} else {
+				return ['error' => $this->l10n->t('Bad HTTP method')];
 			}
 			$body = $response->getBody();
 			$respCode = $response->getStatusCode();
@@ -534,7 +565,7 @@ class SuiteCRMAPIService {
 			} else {
 				return json_decode($body, true);
 			}
-		} catch (\Exception $e) {
+		} catch (Exception $e) {
 			$this->logger->warning('SuiteCRM OAuth error : '.$e->getMessage(), ['app' => $this->appName]);
 			return ['error' => $e->getMessage()];
 		}
