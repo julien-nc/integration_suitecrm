@@ -1,16 +1,31 @@
 on:
   push:
-    branches: [master]
+    branches: [release]
 
 name: Publish release
 
 jobs:
   build:
     name: Build, upload and release in the appstore
+    environment: release
     env:
       APP_ID: integration_suitecrm
     runs-on: ubuntu-latest
     steps:
+      - name: Use Node 12
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, intl, sqlite3
+          ini-values: post_max_size=256M, max_execution_time=180
+          coverage: xdebug
+          tools: php-cs-fixer, phpunit
+
       - name: Checkout code
         uses: actions/checkout@v2
 
@@ -19,7 +34,7 @@ jobs:
         run: |
           git fetch --tags --force
           tag=$(git tag -l --points-at HEAD)
-          vtag=$(echo $tag | grep "v[0-9]\+\.[0-9]\+\.[0-9]\+" || echo "")
+          vtag=$(echo $tag | grep "^v[0-9]\+\.[0-9]\+\.[0-9]\+" || echo "")
           echo "##[set-output name=currenttag;]$vtag"
 
       - name: Build project
@@ -33,8 +48,8 @@ jobs:
           echo "$APP_KEY" > ~/.nextcloud/certificates/${APP_ID}.key
           echo "###### install dependencies"
           export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update -yqq
-          sudo apt-get install php7.4-mbstring php7.4-sqlite3 npm make openssl -yqq > /dev/null 2>&1
+          sudo apt update -y
+          sudo apt install make openssl -y
           echo "###### installing nextcloud"
           mkdir ~/html
           git clone https://github.com/nextcloud/server.git --recursive --depth 1 -b master ~/html/nextcloud
@@ -45,7 +60,7 @@ jobs:
           php ~/html/nextcloud/occ maintenance:mode --off
           cd ~/html/nextcloud/apps/${APP_ID}
           echo "###### npm install"
-          npm install
+          npm ci
           echo "###### npm run build"
           npm run build
           echo "###### make appstore"
