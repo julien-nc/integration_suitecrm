@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 1.0.0 – 2021-06-24
+### Changed
+- stop polling widget content when document is hidden
+- bump js libs
+- more explanations in README
+- bump min NC version to 22
+
 ## 0.0.4 – 2020-11-24
 ### Changed
 - new hint in perso settings when admin settings are not set
