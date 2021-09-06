@@ -566,7 +566,11 @@ class SuiteCRMAPIService {
 				return json_decode($body, true);
 			}
 		} catch (Exception $e) {
-			$this->logger->warning('SuiteCRM OAuth error : '.$e->getMessage(), ['app' => $this->appName]);
+			$message = $e->getMessage();
+			if (isset($params['password'])) {
+				$message = str_replace($params['password'], '********', $message);
+			}
+			$this->logger->warning('SuiteCRM OAuth error : ' . $message, ['app' => $this->appName]);
 			return ['error' => $e->getMessage()];
 		}
 	}
