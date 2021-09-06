@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## 1.0.2 – 2021-09-06
+### Changed
+- bump js libs
+
+### Fixed
+- hide credentials on login failure in server logs
 
 ## 1.0.1 – 2021-06-24
 ### Changed
