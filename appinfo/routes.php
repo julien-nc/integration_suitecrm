@@ -11,7 +11,7 @@
 
 return [
     'routes' => [
-        ['name' => 'config#oauthConnect', 'url' => '/oauth-connect', 'verb' => 'GET'],
+        ['name' => 'config#oauthConnect', 'url' => '/oauth-connect', 'verb' => 'POST'],
         ['name' => 'config#setConfig', 'url' => '/config', 'verb' => 'PUT'],
         ['name' => 'config#setAdminConfig', 'url' => '/admin-config', 'verb' => 'PUT'],
         ['name' => 'suiteCRMAPI#getReminders', 'url' => '/reminders', 'verb' => 'GET'],

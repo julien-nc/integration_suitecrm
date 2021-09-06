@@ -168,12 +168,10 @@ export default {
 			this.loading = true
 			const url = generateUrl('/apps/integration_suitecrm/oauth-connect')
 			const req = {
-				params: {
-					login: this.login,
-					password: this.password,
-				},
+				login: this.login,
+				password: this.password,
 			}
-			axios.get(url, req)
+			axios.post(url, req)
 				.then((response) => {
 					this.state.user_name = response.data.user_name
 					this.password = ''
